@@ -383,10 +383,10 @@ CREATE TABLE SSGT.Pago (
     id_pago INT NOT NULL,
     id_venta INT NOT NULL,
     id_medio_pago INT NOT NULL,
-    fecha DATE,
-    f_limite DATE,
+    id_detalle_pago INT NOT NULL,
     importe_total FLOAT
 );
+
 
 
 CREATE TABLE SSGT.MedioPago (
@@ -403,12 +403,13 @@ CREATE TABLE SSGT.DetalleVenta (
 );
 
 CREATE TABLE SSGT.DetallePago (
-    id_detalle INT NOT NULL,
-    n_registro VARCHAR(16),
+    id_detalle_pago INT NOT NULL,
+    numero_tarjeta VARCHAR(16),
+    f_pago DATE,
     f_vencimiento DATE,
-    importe_total FLOAT,
-    card_cuotas INT
+    cuotas INT
 );
+
 
 CREATE TABLE SSGT.Factura (
     id_factura INT NOT NULL,
@@ -476,6 +477,7 @@ ALTER TABLE SSGT.Envio ADD CONSTRAINT FK_Envio_Venta FOREIGN KEY (id_venta) REFE
 ALTER TABLE SSGT.Envio ADD CONSTRAINT FK_Envio_Domicilio FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
 ALTER TABLE SSGT.Envio ADD CONSTRAINT FK_Envio_TipoEnvio FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
 ALTER TABLE SSGT.Pago ADD CONSTRAINT FK_Pago_MedioPago FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
+ALTER TABLE SSGT.Pago ADD CONSTRAINT FK_Pago_DetallePago FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.MedioPago(id_detalle_pago);
 ALTER TABLE SSGT.Pago ADD CONSTRAINT FK_Pago_Venta FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.Factura ADD CONSTRAINT FK_Factura_Usuario FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Factura ADD CONSTRAINT FK_Factura_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
@@ -512,11 +514,21 @@ td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO,
 td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
 
+INSERT INTO SSGT.DetallePago
+SELECT 
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
+PAGO_NRO_TARJETA, PAGO_FECHA, PAGO_FECHA_VENC_TARJETA, "PAGO_CANT_CUOTAS "
+from gd_esquema.Maestra 
+    
 INSERT INTO SSGT.Pago
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
-tv.id_venta,tmp.id_medio_pago,m.PAGO_FECHA,m.PAGO_FECHA_VENC_TARJETA,m.PAGO_IMPORTE
+tv.id_venta, tmp.id_medio_pago, td.id_detalle_pago, m.PAGO_IMPORTE
 from gd_esquema.Maestra m
+JOIN SSGT.DetallePago td on 
+td.numero_tarjeta = m.PAGO_NRO_TARJETA,
+td.f_pago = m.PAGO_FECHA
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
+
 
