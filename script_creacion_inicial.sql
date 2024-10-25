@@ -1,11 +1,4 @@
--- Verificación y eliminación del esquema si ya existe
-IF EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'SSGT')
-    DROP SCHEMA SSGT;
-GO
 
--- Creación del esquema SSGT
-CREATE SCHEMA SSGT;
-GO
 
 -- Verificación y eliminación de tablas si ya existen
 IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL DROP TABLE SSGT.Domicilio;
@@ -32,6 +25,16 @@ IF OBJECT_ID('SSGT.Factura', 'U') IS NOT NULL DROP TABLE SSGT.Factura;
 IF OBJECT_ID('SSGT.DetalleFactura', 'U') IS NOT NULL DROP TABLE SSGT.DetalleFactura;
 IF OBJECT_ID('SSGT.Concepto_Det_Factura', 'U') IS NOT NULL DROP TABLE SSGT.Concepto_Det_Factura;
 
+
+-- Verificación y eliminación del esquema si ya existe
+IF EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'SSGT')
+    DROP SCHEMA SSGT;
+GO
+
+-- Creación del esquema SSGT
+CREATE SCHEMA SSGT;
+GO
+    
 -- Creación de tablas dentro del esquema SSGT
 CREATE TABLE SSGT.Domicilio (
     id_domicilio INT NOT NULL,
