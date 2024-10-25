@@ -1,6 +1,15 @@
 USE GD2C2024;
 GO
 -- Eliminación de foreign keys antes de eliminar las constraints primarias
+IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Subrubro_Rubro') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Subrubro DROP CONSTRAINT FK_Subrubro_Rubro;
+    END
+END
+
+
 IF OBJECT_ID('SSGT.Envio', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Envio_Domicilio') AND type = 'F')
