@@ -34,7 +34,7 @@ IF OBJECT_ID('SSGT.Concepto_Det_Factura', 'U') IS NOT NULL DROP TABLE SSGT.Conce
 
 -- Creación de tablas dentro del esquema SSGT
 CREATE TABLE SSGT.Domicilio (
-    id_domicilio INT,
+    id_domicilio INT NOT NULL,
     d_provincia VARCHAR(50),
     d_localidad VARCHAR(100),
     d_calle VARCHAR(100),
@@ -46,76 +46,77 @@ CREATE TABLE SSGT.Domicilio (
 );
 
 CREATE TABLE SSGT.Provincia (
-    id_provincia INT,
+    id_provincia INT NOT NULL,
     d_provincia VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Localidad (
-    id_localidad INT,
-    id_provincia INT,
+    id_localidad INT NOT NULL,
+    id_provincia INT NOT NULL,
     d_localidad VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Usuario (
-    id_usuario INT,
+    id_usuario INT NOT NULL,
     d_email VARCHAR(100),
     d_password VARCHAR(80),
     d_fecha_alta DATE
 );
 
 CREATE TABLE SSGT.Cliente (
-    id_usuario INT,
-    id_domicilio INT
+    id_usuario INT NOT NULL,
+    id_domicilio INT NOT NULL
 );
 
 CREATE TABLE SSGT.Vendedor (
-    id_usuario INT,
+    id_usuario INT NOT NULL,
     nombre VARCHAR(100),
     apellido VARCHAR(100),
     telefono VARCHAR(20)
 );
 
 CREATE TABLE SSGT.Rubro (
-    id_rubro INT,
+    id_rubro INT NOT NULL,
     d_rubro VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Subrubro (
-    id_subrubro INT,
-    id_rubro INT,
+    id_subrubro INT NOT NULL,
+    id_rubro INT NOT NULL,
     d_subrubro VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Marca (
-    id_marca INT,
+    id_marca INT NOT NULL,
     d_marca VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Modelo (
-    id_modelo INT,
+    id_modelo INT NOT NULL,
+    id_marca INT NOT NULL,
     d_modelo VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Almacen (
-    id_almacen INT,
+    id_almacen INT NOT NULL,
     d_direccion VARCHAR(100),
     costo_dia FLOAT
 );
 
 CREATE TABLE SSGT.Producto (
-    id_producto INT,
-    id_almacen INT,
-    id_subrubro INT,
-    id_marca INT,
-    id_modelo INT,
+    id_producto INT NOT NULL,
+    id_almacen INT NOT NULL,
+    id_subrubro INT NOT NULL,
+    id_marca INT NOT NULL,
+    id_modelo INT NOT NULL,
     d_descripcion VARCHAR(1000),
     precio FLOAT
 );
 
 CREATE TABLE SSGT.Publicacion (
-    id_publicacion INT,
-    id_vendedor INT,
-    id_producto INT,
+    id_publicacion INT NOT NULL,
+    id_vendedor INT NOT NULL,
+    id_producto INT NOT NULL,
     d_titulo VARCHAR(1000),
     d_descripcion VARCHAR(1000),
     fecha_inicio DATE,
@@ -125,17 +126,17 @@ CREATE TABLE SSGT.Publicacion (
 );
 
 CREATE TABLE SSGT.Venta (
-    id_venta INT,
-    id_comprador INT,
-    id_publicacion INT,
+    id_venta INT NOT NULL,
+    id_comprador INT NOT NULL,
+    id_publicacion INT NOT NULL,
     importe_total FLOAT,
     fecha DATE
 );
 
 CREATE TABLE SSGT.Envio (
-    id_envio INT,
-    id_venta INT,
-    id_domicilio INT,
+    id_envio INT NOT NULL,
+    id_venta INT NOT NULL,
+    id_domicilio INT NOT NULL,
     f_prog_real DATE,
     f_hora_real TIME,
     f_prog_max DATE,
@@ -145,13 +146,13 @@ CREATE TABLE SSGT.Envio (
 );
 
 CREATE TABLE SSGT.TipoEnvio (
-    id_tipo_envio INT,
+    id_tipo_envio INT NOT NULL,
     d_tipo_envio VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Pago (
-    id_pago INT,
-    id_venta INT,
+    id_pago INT NOT NULL,
+    id_venta INT NOT NULL,
     fecha DATE,
     modo_pago VARCHAR(50),
     f_limite DATE,
@@ -160,20 +161,20 @@ CREATE TABLE SSGT.Pago (
 );
 
 CREATE TABLE SSGT.MedioPago (
-    id_medio_pago INT,
+    id_medio_pago INT NOT NULL,
     d_medio_pago VARCHAR(100)
 );
 
 CREATE TABLE SSGT.DetalleVenta (
-    id_detalle_venta INT,
-    id_venta INT,
+    id_detalle_venta INT NOT NULL,
+    id_venta INT NOT NULL,
     precio FLOAT,
     cantidad INT,
     subtotal FLOAT
 );
 
 CREATE TABLE SSGT.DetallePago (
-    id_detalle INT,
+    id_detalle INT NOT NULL,
     n_registro VARCHAR(16),
     f_vencimiento DATE,
     importe_total FLOAT,
@@ -181,25 +182,25 @@ CREATE TABLE SSGT.DetallePago (
 );
 
 CREATE TABLE SSGT.Factura (
-    id_factura INT,
-    id_usuario INT,
-    id_publicacion INT,
-    id_venta INT,
+    id_factura INT NOT NULL,
+    id_usuario INT NOT NULL,
+    id_publicacion INT NOT NULL,
+    id_venta INT NOT NULL,
     fecha DATE,
     importe_total FLOAT
 );
 
 CREATE TABLE SSGT.DetalleFactura (
-    id_detalle_factura INT,
-    id_factura INT,
-    id_concepto INT,
+    id_detalle_factura INT NOT NULL,
+    id_factura INT NOT NULL,
+    id_concepto INT NOT NULL,
     precio FLOAT,
     cantidad INT,
     subtotal FLOAT
 );
 
 CREATE TABLE SSGT.Concepto_Det_Factura (
-    id_concepto_factura INT,
+    id_concepto_factura INT NOT NULL,
     d_concepto VARCHAR(100)
 );
 
