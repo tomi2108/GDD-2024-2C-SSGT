@@ -1,39 +1,11 @@
 USE GD2C2024;
 GO
--- Eliminación de constraints si ya existen
-IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL 
+-- Eliminación de foreign keys antes de eliminar las constraints primarias
+IF OBJECT_ID('SSGT.Envio', 'U') IS NOT NULL 
 BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Domicilio') AND type = 'PK')
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Envio_Domicilio') AND type = 'F')
     BEGIN
-        ALTER TABLE SSGT.Domicilio DROP CONSTRAINT PK_Domicilio;
-    END
-END
-
-IF OBJECT_ID('SSGT.Provincia', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Provincia') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Provincia DROP CONSTRAINT PK_Provincia;
-    END
-END
-
-IF OBJECT_ID('SSGT.Localidad', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Localidad_Provincia') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Localidad DROP CONSTRAINT FK_Localidad_Provincia;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Localidad') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Localidad DROP CONSTRAINT PK_Localidad;
-    END
-END
-
-IF OBJECT_ID('SSGT.Usuario', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Usuario') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Usuario DROP CONSTRAINT PK_Usuario;
+        ALTER TABLE SSGT.Envio DROP CONSTRAINT FK_Envio_Domicilio;
     END
 END
 
@@ -43,10 +15,6 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Cliente DROP CONSTRAINT FK_Cliente_Domicilio;
     END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Cliente') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Cliente DROP CONSTRAINT PK_Cliente;
-    END
 END
 
 IF OBJECT_ID('SSGT.Vendedor', 'U') IS NOT NULL 
@@ -54,58 +22,6 @@ BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Vendedor_Usuario') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Vendedor DROP CONSTRAINT FK_Vendedor_Usuario;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Vendedor') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Vendedor DROP CONSTRAINT PK_Vendedor;
-    END
-END
-
-IF OBJECT_ID('SSGT.Rubro', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Rubro') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Rubro DROP CONSTRAINT PK_Rubro;
-    END
-END
-
-IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Subrubro_Rubro') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Subrubro DROP CONSTRAINT FK_Subrubro_Rubro;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Subrubro') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Subrubro DROP CONSTRAINT PK_Subrubro;
-    END
-END
-
-IF OBJECT_ID('SSGT.Marca', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Marca') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Marca DROP CONSTRAINT PK_Marca;
-    END
-END
-
-IF OBJECT_ID('SSGT.Modelo', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Modelo_Marca') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Modelo DROP CONSTRAINT FK_Modelo_Marca;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Modelo') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Modelo DROP CONSTRAINT PK_Modelo;
-    END
-END
-
-IF OBJECT_ID('SSGT.Almacen', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Almacen') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Almacen DROP CONSTRAINT PK_Almacen;
     END
 END
 
@@ -127,10 +43,6 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Producto DROP CONSTRAINT FK_Producto_Modelo;
     END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Producto') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Producto DROP CONSTRAINT PK_Producto;
-    END
 END
 
 IF OBJECT_ID('SSGT.Publicacion', 'U') IS NOT NULL 
@@ -143,10 +55,6 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Producto;
     END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Publicacion') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Publicacion DROP CONSTRAINT PK_Publicacion;
-    END
 END
 
 IF OBJECT_ID('SSGT.Venta', 'U') IS NOT NULL 
@@ -158,70 +66,6 @@ BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Venta_Publicacion') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Venta DROP CONSTRAINT FK_Venta_Publicacion;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Venta') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Venta DROP CONSTRAINT PK_Venta;
-    END
-END
-
-IF OBJECT_ID('SSGT.Envio', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Envio_Venta') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Envio DROP CONSTRAINT FK_Envio_Venta;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Envio_Domicilio') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Envio DROP CONSTRAINT FK_Envio_Domicilio;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Envio') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Envio DROP CONSTRAINT PK_Envio;
-    END
-END
-
-IF OBJECT_ID('SSGT.TipoEnvio', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_TipoEnvio') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.TipoEnvio DROP CONSTRAINT PK_TipoEnvio;
-    END
-END
-
-IF OBJECT_ID('SSGT.Pago', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Pago_Venta') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Pago DROP CONSTRAINT FK_Pago_Venta;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Pago') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Pago DROP CONSTRAINT PK_Pago;
-    END
-END
-
-IF OBJECT_ID('SSGT.MedioPago', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_MedioPago') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.MedioPago DROP CONSTRAINT PK_MedioPago;
-    END
-END
-
-IF OBJECT_ID('SSGT.DetalleVenta', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_DetalleVenta') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.DetalleVenta DROP CONSTRAINT PK_DetalleVenta;
-    END
-END
-
-IF OBJECT_ID('SSGT.DetallePago', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_DetallePago') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.DetallePago DROP CONSTRAINT PK_DetallePago;
     END
 END
 
@@ -239,33 +83,137 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Venta;
     END
+END
+
+-- Luego eliminar las constraints primarias
+IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Domicilio') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Domicilio DROP CONSTRAINT PK_Domicilio;
+    END
+END
+
+IF OBJECT_ID('SSGT.Provincia', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Provincia') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Provincia DROP CONSTRAINT PK_Provincia;
+    END
+END
+
+IF OBJECT_ID('SSGT.Localidad', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Localidad') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Localidad DROP CONSTRAINT PK_Localidad;
+    END
+END
+
+IF OBJECT_ID('SSGT.Usuario', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Usuario') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Usuario DROP CONSTRAINT PK_Usuario;
+    END
+END
+
+IF OBJECT_ID('SSGT.Cliente', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Cliente') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Cliente DROP CONSTRAINT PK_Cliente;
+    END
+END
+
+IF OBJECT_ID('SSGT.Vendedor', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Vendedor') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Vendedor DROP CONSTRAINT PK_Vendedor;
+    END
+END
+
+IF OBJECT_ID('SSGT.Rubro', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Rubro') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Rubro DROP CONSTRAINT PK_Rubro;
+    END
+END
+
+IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Subrubro') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Subrubro DROP CONSTRAINT PK_Subrubro;
+    END
+END
+
+IF OBJECT_ID('SSGT.Marca', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Marca') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Marca DROP CONSTRAINT PK_Marca;
+    END
+END
+
+IF OBJECT_ID('SSGT.Modelo', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Modelo') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Modelo DROP CONSTRAINT PK_Modelo;
+    END
+END
+
+IF OBJECT_ID('SSGT.Almacen', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Almacen') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Almacen DROP CONSTRAINT PK_Almacen;
+    END
+END
+
+IF OBJECT_ID('SSGT.Producto', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Producto') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Producto DROP CONSTRAINT PK_Producto;
+    END
+END
+
+IF OBJECT_ID('SSGT.Publicacion', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Publicacion') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Publicacion DROP CONSTRAINT PK_Publicacion;
+    END
+END
+
+IF OBJECT_ID('SSGT.Venta', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Venta') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Venta DROP CONSTRAINT PK_Venta;
+    END
+END
+
+IF OBJECT_ID('SSGT.Envio', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Envio') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Envio DROP CONSTRAINT PK_Envio;
+    END
+END
+
+IF OBJECT_ID('SSGT.Factura', 'U') IS NOT NULL 
+BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Factura') AND type = 'PK')
     BEGIN
         ALTER TABLE SSGT.Factura DROP CONSTRAINT PK_Factura;
     END
 END
-
-IF OBJECT_ID('SSGT.DetalleFactura', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_DetalleFactura_Factura') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.DetalleFactura DROP CONSTRAINT FK_DetalleFactura_Factura;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_DetalleFactura') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.DetalleFactura DROP CONSTRAINT PK_DetalleFactura;
-    END
-END
-
-IF OBJECT_ID('SSGT.Concepto_Det_Factura', 'U') IS NOT NULL 
-BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_ConceptoDetFactura') AND type = 'PK')
-    BEGIN
-        ALTER TABLE SSGT.Concepto_Det_Factura DROP CONSTRAINT PK_ConceptoDetFactura;
-    END
-END
 GO
-
 
 
 -- Verificación y eliminación de tablas si ya existen
