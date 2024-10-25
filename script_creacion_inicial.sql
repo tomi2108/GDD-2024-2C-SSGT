@@ -355,7 +355,8 @@ CREATE TABLE SSGT.Publicacion (
 
 CREATE TABLE SSGT.Venta (
     id_venta INT NOT NULL,
-    id_comprador INT NOT NULL,
+    id_detalle_venta INT NOT NULL,
+    id_cliente INT NOT NULL,
     id_publicacion INT NOT NULL,
     importe_total FLOAT,
     fecha DATE
@@ -386,8 +387,6 @@ CREATE TABLE SSGT.Pago (
     id_detalle_pago INT NOT NULL,
     importe_total FLOAT
 );
-
-
 
 CREATE TABLE SSGT.MedioPago (
     id_medio_pago INT NOT NULL,
@@ -471,8 +470,9 @@ ALTER TABLE SSGT.Producto ADD CONSTRAINT FK_Producto_Marca FOREIGN KEY (id_marca
 ALTER TABLE SSGT.Producto ADD CONSTRAINT FK_Producto_Modelo FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
 ALTER TABLE SSGT.Publicacion ADD CONSTRAINT FK_Publicacion_Vendedor FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_usuario);
 ALTER TABLE SSGT.Publicacion ADD CONSTRAINT FK_Publicacion_Producto FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
-ALTER TABLE SSGT.Venta ADD CONSTRAINT FK_Venta_Usuario FOREIGN KEY (id_comprador) REFERENCES SSGT.Usuario(id_usuario);
+ALTER TABLE SSGT.Venta ADD CONSTRAINT FK_Venta_Usuario FOREIGN KEY (id_cliente) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Venta ADD CONSTRAINT FK_Venta_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
+ALTER TABLE SSGT.Venta ADD CONSTRAINT FK_Venta_DetalleVenta FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Envio ADD CONSTRAINT FK_Envio_Venta FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.Envio ADD CONSTRAINT FK_Envio_Domicilio FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
 ALTER TABLE SSGT.Envio ADD CONSTRAINT FK_Envio_TipoEnvio FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
@@ -484,7 +484,32 @@ ALTER TABLE SSGT.Factura ADD CONSTRAINT FK_Factura_Publicacion FOREIGN KEY (id_p
 ALTER TABLE SSGT.Factura ADD CONSTRAINT FK_Factura_Venta FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.DetalleFactura ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
 
--- Domicilio y Ventas antes de pago y envio
+-- Migracion de datos
+
+-- Usuario, publicacion y domicilio antes
+
+INSERT INTO SSGT.DetalleVenta
+SELECT 
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
+VENTA_CODIGO, VENTA_DET_PRECIO, VENTA_DET_CANT, VENTA_DET_SUB_TOTAL
+from gd_esquema.Maestra 
+
+-- Falta completar con la tabla cliente
+INSERT INTO SSGT.Venta
+SELECT 
+VENTA_CODIGO
+tdv.id_detalle_venta, tc.id_cliente, tp.id_publicacion, m.VENTA_TOTAL, m.VENTA_FECHA
+from gd_esquema.Maestra m
+JOIN SSGT.DetalleVenta tdv on 
+tdv.id_venta = m.VENTA_CODIGO
+JOIN SSGT.Usuario tc
+on 
+tc.id_cliente = m.CLIENTE_NOMBRE,
+tc.id_cliente = m.CLIENTE_APELLIDO,
+tc.id_cliente = m.CLIENTE_DNI
+JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
+WHERE VENTA_CODIGO IS NOT NULL
+
 
 INSERT INTO SSGT.MedioPago
 SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), PAGO_MEDIO_PAGO
@@ -530,5 +555,7 @@ td.numero_tarjeta = m.PAGO_NRO_TARJETA,
 td.f_pago = m.PAGO_FECHA
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
+
+
 
 
