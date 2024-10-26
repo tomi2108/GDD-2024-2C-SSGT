@@ -119,9 +119,9 @@ END
 
 IF OBJECT_ID('SSGT.Factura', 'U') IS NOT NULL 
 BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Factura_Usuario') AND type = 'F')
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Factura_Vendedor') AND type = 'F')
     BEGIN
-        ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Usuario;
+        ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Vendedor;
     END
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Factura_Publicacion') AND type = 'F')
     BEGIN
@@ -343,6 +343,7 @@ CREATE TABLE SSGT.Usuario (
 );
 
 CREATE TABLE SSGT.Cliente (
+	id_cliente INT NOT NULL,
     id_usuario INT NOT NULL,
     id_domicilio INT NOT NULL,
 	nombre VARCHAR(30),
@@ -352,10 +353,10 @@ CREATE TABLE SSGT.Cliente (
 );
 
 CREATE TABLE SSGT.Vendedor (
+	id_vendedor INT NOT NULL,
     id_usuario INT NOT NULL,
-    d_razon_social VARCHAR(30),
-    f_nacimiento DATE,
-    d_cuit VARCHAR(20)
+    d_razon_social VARCHAR(50),
+    d_cuit VARCHAR(25)
 );
 
 CREATE TABLE SSGT.Rubro (
@@ -469,7 +470,7 @@ CREATE TABLE SSGT.DetallePago (
 
 CREATE TABLE SSGT.Factura (
     id_factura INT NOT NULL,
-    id_usuario INT NOT NULL,
+    id_vendedor INT NOT NULL,
     id_publicacion INT NOT NULL,
     id_venta INT NOT NULL,
     fecha DATE,
@@ -495,8 +496,8 @@ ALTER TABLE SSGT.Domicilio		ADD CONSTRAINT PK_Domicilio PRIMARY KEY (id_domicili
 ALTER TABLE SSGT.Provincia		ADD CONSTRAINT PK_Provincia PRIMARY KEY (id_provincia);
 ALTER TABLE SSGT.Localidad		ADD CONSTRAINT PK_Localidad PRIMARY KEY (id_localidad);
 ALTER TABLE SSGT.Usuario		ADD CONSTRAINT PK_Usuario PRIMARY KEY (id_usuario);
-ALTER TABLE SSGT.Cliente		ADD CONSTRAINT PK_Cliente PRIMARY KEY (id_usuario);
-ALTER TABLE SSGT.Vendedor		ADD CONSTRAINT PK_Vendedor PRIMARY KEY (id_usuario);
+ALTER TABLE SSGT.Cliente		ADD CONSTRAINT PK_Cliente PRIMARY KEY (id_cliente);
+ALTER TABLE SSGT.Vendedor		ADD CONSTRAINT PK_Vendedor PRIMARY KEY (id_vendedor);
 ALTER TABLE SSGT.Rubro			ADD CONSTRAINT PK_Rubro PRIMARY KEY (id_rubro);
 ALTER TABLE SSGT.Subrubro		ADD CONSTRAINT PK_Subrubro PRIMARY KEY (id_subrubro);
 ALTER TABLE SSGT.Marca			ADD CONSTRAINT PK_Marca PRIMARY KEY (id_marca);
@@ -516,36 +517,38 @@ ALTER TABLE SSGT.DetalleFactura	ADD CONSTRAINT PK_DetalleFactura PRIMARY KEY (id
 ALTER TABLE SSGT.Concepto_Det_Factura ADD CONSTRAINT PK_ConceptoDetFactura PRIMARY KEY (id_concepto_factura);
 
 -- Creación de FOREIGN KEY constraints
-ALTER TABLE SSGT.Almacen			ADD CONSTRAINT FK_Almacen_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
-ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
-ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Provincia	FOREIGN KEY (id_Provincia) REFERENCES SSGT.Provincia(id_provincia);
-ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
-ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
-ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
-ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Publicacion	FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
-ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
-ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
---ALTER TABLE SSGT.Localidad			ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
-ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
-ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
-ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
-ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Almacen		FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
-ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
-ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
-ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
-ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
-ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_usuario);
-ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
-ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
-ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
-ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
-ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Usuario			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_usuario);
+ALTER TABLE SSGT.Almacen	ADD CONSTRAINT FK_Almacen_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Vendedor	ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+ALTER TABLE SSGT.Cliente	ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Cliente	ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+ALTER TABLE SSGT.Domicilio	ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
+ALTER TABLE SSGT.Domicilio	ADD CONSTRAINT FK_Domicilio_Provincia	FOREIGN KEY (id_Provincia) REFERENCES SSGT.Provincia(id_provincia);
+ALTER TABLE SSGT.DetalleFactura	ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
+ALTER TABLE SSGT.Envio		ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Envio		ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
+ALTER TABLE SSGT.Envio		ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
+ALTER TABLE SSGT.Factura	ADD CONSTRAINT FK_Factura_Publicacion	FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
+ALTER TABLE SSGT.Factura	ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
+ALTER TABLE SSGT.Factura	ADD CONSTRAINT FK_Factura_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
+--ALTER TABLE SSGT.Localidad	ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
+ALTER TABLE SSGT.Pago		ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
+ALTER TABLE SSGT.Pago		ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
+ALTER TABLE SSGT.Pago		ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
+ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Almacen		FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
+ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
+ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
+ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
+ALTER TABLE SSGT.Publicacion	ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
+ALTER TABLE SSGT.Publicacion	ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_usuario);
+ALTER TABLE SSGT.Subrubro	ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
+ALTER TABLE SSGT.Venta		ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
+ALTER TABLE SSGT.Venta		ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
+ALTER TABLE SSGT.Venta		ADD CONSTRAINT FK_Venta_Usuario			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_usuario);
+
 
 -- Migracion de datos
 -- Usuario, publicacion y domicilio antes
+
 --Completa usuario(Los que son clientes)
 INSERT INTO SSGT.Usuario
 SELECT
@@ -557,25 +560,27 @@ from gd_esquema.Maestra m
 WHERE CLIENTE_MAIL IS NOT NULL
 
 --Completa usuario(Los que son vendedores)
+DECLARE @CurrentMaxId INT = 103592;
 INSERT INTO SSGT.Usuario
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
-VENDEDOR_MAIL,
-VEN_USUARIO_PASS,
-VEN_USUARIO_FECHA_CREACION
-from gd_esquema.Maestra m
-WHERE VENDEDOR_MAIL IS NOT NULL
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CurrentMaxId AS id, -- Asegura que el ID comience desde 103593
+    VENDEDOR_MAIL AS email,
+    VEN_USUARIO_PASS AS password,
+    VEN_USUARIO_FECHA_CREACION AS fecha_creacion
+FROM gd_esquema.Maestra m
+WHERE VENDEDOR_MAIL IS NOT NULL;
 
 --Completa los vendedores.
 INSERT INTO SSGT.Vendedor
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+tu.id_usuario,
 VENDEDOR_RAZON_SOCIAL,
-VENDEDOR_CUIT,
+VENDEDOR_CUIT
 FROM gd_esquema.Maestra m
 JOIN SSGT.Usuario tu on tu.d_email = m.VENDEDOR_MAIL
 WHERE VENDEDOR_CUIT IS NOT NULL
-
+	
 --Completa los clientes.
 INSERT INTO SSGT.Cliente
 SELECT
