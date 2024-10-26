@@ -458,7 +458,9 @@ ALTER TABLE SSGT.Factura		ADD CONSTRAINT PK_Factura PRIMARY KEY (id_factura);
 ALTER TABLE SSGT.DetalleFactura	ADD CONSTRAINT PK_DetalleFactura PRIMARY KEY (id_detalle_factura);
 ALTER TABLE SSGT.Concepto_Det_Factura ADD CONSTRAINT PK_ConceptoDetFactura PRIMARY KEY (id_concepto_factura);
 
--- Creación de FOREIGN KEY constraintsALTER TABLE SSGT.Cliente		ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+-- Creación de FOREIGN KEY constraints
+ALTER TABLE SSGT.Cliente		ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Cliente		ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Vendedor		ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Localidad		ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
 ALTER TABLE SSGT.Subrubro		ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
@@ -484,7 +486,6 @@ ALTER TABLE SSGT.Factura		ADD CONSTRAINT FK_Factura_Venta			FOREIGN KEY (id_vent
 ALTER TABLE SSGT.DetalleFactura ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
 ALTER TABLE SSGT.Domicilio		ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
 ALTER TABLE SSGT.Domicilio		ADD CONSTRAINT FK_Domicilio_Provincia	FOREIGN KEY (id_Provincia) REFERENCES SSGT.Provincia(id_provincia);
-
 
 -- Migracion de datos
 
