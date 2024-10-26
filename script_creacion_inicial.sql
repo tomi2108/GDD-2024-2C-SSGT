@@ -320,8 +320,7 @@ CREATE TABLE SSGT.Domicilio (
     d_altura INT,
     d_piso VARCHAR(10),
     d_depto VARCHAR(5),
-    d_codigo_postal VARCHAR(5),
-    d_localidad_desc VARCHAR(30)
+    d_codigo_postal VARCHAR(5)
 );
 
 CREATE TABLE SSGT.Provincia (
@@ -517,97 +516,56 @@ ALTER TABLE SSGT.DetalleFactura	ADD CONSTRAINT PK_DetalleFactura PRIMARY KEY (id
 ALTER TABLE SSGT.Concepto_Det_Factura ADD CONSTRAINT PK_ConceptoDetFactura PRIMARY KEY (id_concepto_factura);
 
 -- Creación de FOREIGN KEY constraints
-ALTER TABLE SSGT.Almacen	ADD CONSTRAINT FK_Almacen_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-ALTER TABLE SSGT.Vendedor	ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
-ALTER TABLE SSGT.Cliente	ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-ALTER TABLE SSGT.Cliente	ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
-ALTER TABLE SSGT.Domicilio	ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
-ALTER TABLE SSGT.Domicilio	ADD CONSTRAINT FK_Domicilio_Provincia	FOREIGN KEY (id_Provincia) REFERENCES SSGT.Provincia(id_provincia);
-ALTER TABLE SSGT.DetalleFactura	ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
-ALTER TABLE SSGT.Envio		ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-ALTER TABLE SSGT.Envio		ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
-ALTER TABLE SSGT.Envio		ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
-ALTER TABLE SSGT.Factura	ADD CONSTRAINT FK_Factura_Publicacion	FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
-ALTER TABLE SSGT.Factura	ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
-ALTER TABLE SSGT.Factura	ADD CONSTRAINT FK_Factura_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
---ALTER TABLE SSGT.Localidad	ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
-ALTER TABLE SSGT.Pago		ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
-ALTER TABLE SSGT.Pago		ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
-ALTER TABLE SSGT.Pago		ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
-ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Almacen		FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
-ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
-ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
-ALTER TABLE SSGT.Producto	ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
-ALTER TABLE SSGT.Publicacion	ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
-ALTER TABLE SSGT.Publicacion	ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_usuario);
-ALTER TABLE SSGT.Subrubro	ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
-ALTER TABLE SSGT.Venta		ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
-ALTER TABLE SSGT.Venta		ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
-ALTER TABLE SSGT.Venta		ADD CONSTRAINT FK_Venta_Usuario			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_usuario);
+ALTER TABLE SSGT.Almacen			ADD CONSTRAINT FK_Almacen_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
 
+ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
+ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
+ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
+ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
+ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
+ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Publicacion	FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
+ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
+ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
+--ALTER TABLE SSGT.Localidad			ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
+ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
+ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
+ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
+ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Almacen		FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
+ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
+ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
+ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
+ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
+ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
+ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
+ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
+ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
+ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
+ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
 -- Migracion de datos
 -- Usuario, publicacion y domicilio antes
 
 --Completa usuario(Los que son clientes)
-INSERT INTO SSGT.Usuario
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
-CLIENTE_MAIL,
-CLI_USUARIO_PASS,
-CLI_USUARIO_FECHA_CREACION
-from gd_esquema.Maestra m
-WHERE CLIENTE_MAIL IS NOT NULL
-
---Completa usuario(Los que son vendedores)
-DECLARE @CurrentMaxId INT = 103592;
-INSERT INTO SSGT.Usuario
-SELECT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CurrentMaxId AS id, -- Asegura que el ID comience desde 103593
-    VENDEDOR_MAIL AS email,
-    VEN_USUARIO_PASS AS password,
-    VEN_USUARIO_FECHA_CREACION AS fecha_creacion
-FROM gd_esquema.Maestra m
-WHERE VENDEDOR_MAIL IS NOT NULL;
-
---Completa los vendedores.
-INSERT INTO SSGT.Vendedor
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
-tu.id_usuario,
-VENDEDOR_RAZON_SOCIAL,
-VENDEDOR_CUIT
-FROM gd_esquema.Maestra m
-JOIN SSGT.Usuario tu on tu.d_email = m.VENDEDOR_MAIL
-WHERE VENDEDOR_CUIT IS NOT NULL
-	
---Completa los clientes.
-INSERT INTO SSGT.Cliente
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
-CLIENTE_NOMBRE,
-CLIENTE_APELLIDO,
-CLIENTE_DNI,
-CLIENTE_FECHA_NAC
-FROM gd_esquema.Maestra m
-JOIN SSGT.Usuario tu on tu.apellido = m.CLIENTE_APELLIDO,
-						tu.nombre = m.CLIENTE_NOMBRE,
-						tu.dni = m.CLIENTE_DNI
-WHERE VENDEDOR_CUIT IS NOT NULL
-
+--Provincia, Localidad, Domicilio, Usuario, Vendedor y Cliente en orden.
+--Luego Publicacion
 --Todas las localidades de los Vendedores.
 INSERT INTO SSGT.Localidad
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), -- Asegura que el ID comience desde 90
 VEN_USUARIO_DOMICILIO_LOCALIDAD
 from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_LOCALIDAD
 
+
 --Todas las localidades de los Clientes.
+DECLARE @CantLocalidadVend INT = 89;
 INSERT INTO SSGT.Localidad
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantLocalidadVend AS id, -- Asegura que el ID comience desde 90
 CLI_USUARIO_DOMICILIO_LOCALIDAD
 from gd_esquema.Maestra m
 WHERE CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
@@ -623,18 +581,43 @@ WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_PROVINCIA
 
 --Todas las provincias de los vendedores
+DECLARE @CantProvCli INT = 23;
 INSERT INTO SSGT.Provincia
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantProvCli AS id, -- Asegura que el ID comience desde 24
 CLI_USUARIO_DOMICILIO_PROVINCIA
 from gd_esquema.Maestra m
 WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY CLI_USUARIO_DOMICILIO_PROVINCIA
 
--- Migra todos los domicilios de los vendedores.
+-- Migra todos los domicilios de los clientes.
 INSERT INTO SSGT.Domicilio
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
+tp.id_provincia,
+tl.id_localidad,
+CLI_USUARIO_DOMICILIO_CALLE,
+CLI_USUARIO_DOMICILIO_NRO_CALLE,
+CLI_USUARIO_DOMICILIO_PISO,
+CLI_USUARIO_DOMICILIO_DEPTO,
+CLI_USUARIO_DOMICILIO_CP
+from gd_esquema.Maestra m
+JOIN SSGT.Localidad tl on tl.d_localidad = m.cli_usuario_domicilio_localidad
+JOIN SSGT.Provincia tp on tp.d_provincia = m.cli_usuario_domicilio_provincia
+WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
+GROUP BY tl.id_localidad,
+tp.id_provincia,
+CLI_USUARIO_DOMICILIO_CALLE,
+CLI_USUARIO_DOMICILIO_NRO_CALLE,
+CLI_USUARIO_DOMICILIO_PISO,
+CLI_USUARIO_DOMICILIO_DEPTO,
+CLI_USUARIO_DOMICILIO_CP
+
+-- Migra todos los domicilios de los vendedores.
+DECLARE @CantDomCli INT = 83979;
+INSERT INTO SSGT.Domicilio
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantDomCli AS id, -- Asegura que el ID comience desde 83989
 tp.id_provincia,
 tl.id_localidad,
 m.VEN_USUARIO_DOMICILIO_CALLE,
@@ -643,27 +626,71 @@ m.VEN_USUARIO_DOMICILIO_PISO,
 m.VEN_USUARIO_DOMICILIO_DEPTO,
 m.VEN_USUARIO_DOMICILIO_CP
 from gd_esquema.Maestra m
-JOIN SSGT.Localidad tl on tl.d_localidad = m.cli_usuario_domicilio_localidad
-JOIN SSGT.Provincia tp on tp.d_provincia = m.cli_usuario_domicilio_provincia
-WHERE VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL
-GROUP BY VEN_USUARIO_DOMICILIO_CP
-
--- Migra todos los domicilios de los clientes.
-INSERT INTO SSGT.Domicilio
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
-CLI_USUARIO_DOMICILIO_CALLE,
-CLI_USUARIO_DOMICILIO_NRO_CALLE,
-CLI_USUARIO_DOMICILIO_PISO,
-CLI_USUARIO_DOMICILIO_DEPTO,
-CLI_USUARIO_DOMICILIO_CP,
-tl.id_localidad,
-tp.id_provincia
-from gd_esquema.Maestra m
 JOIN SSGT.Localidad tl on tl.d_localidad = m.ven_usuario_domicilio_localidad
 JOIN SSGT.Provincia tp on tp.d_provincia = m.ven_usuario_domicilio_provincia
-WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
-GROUP BY CLI_USUARIO_DOMICILIO_CP
+WHERE VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL
+GROUP BY tp.id_provincia,
+		tl.id_localidad,
+		m.VEN_USUARIO_DOMICILIO_CALLE,
+		m.VEN_USUARIO_DOMICILIO_NRO_CALLE,
+		m.VEN_USUARIO_DOMICILIO_PISO,
+		m.VEN_USUARIO_DOMICILIO_DEPTO,
+		m.VEN_USUARIO_DOMICILIO_CP
+
+--Completa usuario(Los que son clientes)
+INSERT INTO SSGT.Usuario
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+CLIENTE_MAIL,
+CLI_USUARIO_PASS,
+CLI_USUARIO_FECHA_CREACION
+from gd_esquema.Maestra m
+WHERE CLIENTE_MAIL IS NOT NULL
+GROUP BY CLIENTE_MAIL
+
+--Completa usuario(Los que son vendedores)
+DECLARE @CantCli INT = 103592;
+INSERT INTO SSGT.Usuario
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantCli AS id, -- Asegura que el ID comience desde 103593
+    VENDEDOR_MAIL AS email,
+    VEN_USUARIO_PASS AS password,
+    VEN_USUARIO_FECHA_CREACION AS fecha_creacion
+FROM gd_esquema.Maestra m
+WHERE VENDEDOR_MAIL IS NOT NULL;
+GROUP BY VENDEDOR_MAIL
+
+--Completa los vendedores.
+INSERT INTO SSGT.Vendedor
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+tu.id_usuario,
+VENDEDOR_RAZON_SOCIAL,
+VENDEDOR_CUIT
+FROM gd_esquema.Maestra m
+JOIN SSGT.Usuario tu on tu.d_email = m.VENDEDOR_MAIL
+WHERE VENDEDOR_CUIT IS NOT NULL
+GROUP BY VENDEDOR_CUIT
+
+--Completa los clientes.
+INSERT INTO SSGT.Cliente
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+tu.id_usuario,
+td.id_domicilio,
+CLIENTE_NOMBRE,
+CLIENTE_APELLIDO,
+CLIENTE_DNI,
+CLIENTE_FECHA_NAC
+FROM gd_esquema.Maestra m
+JOIN SSGT.Usuario tu	on tu.d_email = m.CLIENTE_MAIL
+JOIN SSGT.Domicilio td	on td.d_calle = m.CLI_USUARIO_DOMICILIO_CALLE AND
+							td.d_altura = m.CLI_USUARIO_DOMICILIO_NRO_CALLE AND
+							td.d_piso=m.CLI_USUARIO_DOMICILIO_PISO AND
+							td.d_depto=m.CLI_USUARIO_DOMICILIO_DEPTO AND
+							td.d_codigo_postal=m.CLI_USUARIO_DOMICILIO_CP
+WHERE CLIENTE_DNI IS NOT NULL
+GROUP BY CLIENTE_DNI
 
 INSERT INTO SSGT.DetalleVenta
 SELECT
