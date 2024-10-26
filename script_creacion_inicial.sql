@@ -546,8 +546,7 @@ ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Usuario			FOREIGN KEY (id_clie
 
 -- Migracion de datos
 -- Usuario, publicacion y domicilio antes
-
---Completa usuario solo los clientes
+--Completa usuario(Los que son clientes)
 INSERT INTO SSGT.Usuario
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -557,7 +556,7 @@ CLI_USUARIO_FECHA_CREACION
 from gd_esquema.Maestra m
 WHERE CLIENTE_MAIL IS NOT NULL
 
---Completa usuario solo los vendedores
+--Completa usuario(Los que son vendedores)
 INSERT INTO SSGT.Usuario
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -572,17 +571,26 @@ INSERT INTO SSGT.Vendedor
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
 VENDEDOR_RAZON_SOCIAL,
-VENDEDOR_CUIT
-FROM gd_esquema.Maestra
+VENDEDOR_CUIT,
+FROM gd_esquema.Maestra m
+JOIN SSGT.Usuario tu on tu.d_email = m.VENDEDOR_MAIL
 WHERE VENDEDOR_CUIT IS NOT NULL
 
 --Completa los clientes.
 INSERT INTO SSGT.Cliente
-
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL))
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+CLIENTE_NOMBRE,
+CLIENTE_APELLIDO,
+CLIENTE_DNI,
+CLIENTE_FECHA_NAC
 FROM gd_esquema.Maestra m
+JOIN SSGT.Usuario tu on tu.apellido = m.CLIENTE_APELLIDO,
+						tu.nombre = m.CLIENTE_NOMBRE,
+						tu.dni = m.CLIENTE_DNI
+WHERE VENDEDOR_CUIT IS NOT NULL
 
+--Todas las localidades de los Vendedores.
 INSERT INTO SSGT.Localidad
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -591,6 +599,7 @@ from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_LOCALIDAD
 
+--Todas las localidades de los Clientes.
 INSERT INTO SSGT.Localidad
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -599,6 +608,7 @@ from gd_esquema.Maestra m
 WHERE CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
 GROUP BY CLI_USUARIO_DOMICILIO_LOCALIDAD
 
+--Todas las provincias de los clientes
 INSERT INTO SSGT.Provincia
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -607,6 +617,7 @@ from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_PROVINCIA
 
+--Todas las provincias de los vendedores
 INSERT INTO SSGT.Provincia
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -615,6 +626,7 @@ from gd_esquema.Maestra m
 WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY CLI_USUARIO_DOMICILIO_PROVINCIA
 
+-- Migra todos los domicilios de los vendedores.
 INSERT INTO SSGT.Domicilio
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -631,6 +643,23 @@ JOIN SSGT.Provincia tp on tp.d_provincia = m.cli_usuario_domicilio_provincia
 WHERE VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_CP
 
+-- Migra todos los domicilios de los clientes.
+INSERT INTO SSGT.Domicilio
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
+CLI_USUARIO_DOMICILIO_CALLE,
+CLI_USUARIO_DOMICILIO_NRO_CALLE,
+CLI_USUARIO_DOMICILIO_PISO,
+CLI_USUARIO_DOMICILIO_DEPTO,
+CLI_USUARIO_DOMICILIO_CP,
+tl.id_localidad,
+tp.id_provincia
+from gd_esquema.Maestra m
+JOIN SSGT.Localidad tl on tl.d_localidad = m.ven_usuario_domicilio_localidad
+JOIN SSGT.Provincia tp on tp.d_provincia = m.ven_usuario_domicilio_provincia
+WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
+GROUP BY CLI_USUARIO_DOMICILIO_CP
+
 INSERT INTO SSGT.DetalleVenta
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -643,13 +672,11 @@ SELECT
 VENTA_CODIGO
 tdv.id_detalle_venta, tc.id_cliente, tp.id_publicacion, m.VENTA_TOTAL, m.VENTA_FECHA
 from gd_esquema.Maestra m
-JOIN SSGT.DetalleVenta tdv on 
-tdv.id_venta = m.VENTA_CODIGO
-JOIN SSGT.Usuario tc
-on 
-tc.id_cliente = m.CLIENTE_NOMBRE,
-tc.id_cliente = m.CLIENTE_APELLIDO,
-tc.id_cliente = m.CLIENTE_DNI
+JOIN SSGT.DetalleVenta tdv on tdv.id_venta = m.VENTA_CODIGO
+JOIN SSGT.Usuario tc on 
+	tc.id_cliente = m.CLIENTE_NOMBRE,
+	tc.id_cliente = m.CLIENTE_APELLIDO,
+	tc.id_cliente = m.CLIENTE_DNI
 JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
 WHERE VENTA_CODIGO IS NOT NULL
 
@@ -698,19 +725,3 @@ td.numero_tarjeta = m.PAGO_NRO_TARJETA,
 td.f_pago = m.PAGO_FECHA
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
-
-INSERT INTO SSGT.Domicilio
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
-CLI_USUARIO_DOMICILIO_CALLE,
-CLI_USUARIO_DOMICILIO_NRO_CALLE,
-CLI_USUARIO_DOMICILIO_PISO,
-CLI_USUARIO_DOMICILIO_DEPTO,
-CLI_USUARIO_DOMICILIO_CP,
-tl.id_localidad,
-tp.id_provincia
-from gd_esquema.Maestra m
-JOIN SSGT.Localidad tl on tl.d_localidad = m.ven_usuario_domicilio_localidad
-JOIN SSGT.Provincia tp on tp.d_provincia = m.ven_usuario_domicilio_provincia
-WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
-GROUP BY CLI_USUARIO_DOMICILIO_CP
