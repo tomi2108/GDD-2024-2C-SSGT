@@ -546,9 +546,7 @@ ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_clie
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
 -- Migracion de datos
--- Usuario, publicacion y domicilio antes
-
---Completa usuario(Los que son clientes)
+-- Migracion de datos
 --Provincia, Localidad, Domicilio, Usuario, Vendedor y Cliente en orden.
 --Luego Publicacion
 --Todas las localidades de los Vendedores.
@@ -560,18 +558,21 @@ from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_LOCALIDAD
 
-
 --Todas las localidades de los Clientes.
 DECLARE @CantLocalidadVend INT = 89;
 INSERT INTO SSGT.Localidad
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantLocalidadVend AS id, -- Asegura que el ID comience desde 90
-CLI_USUARIO_DOMICILIO_LOCALIDAD
-from gd_esquema.Maestra m
-WHERE CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantLocalidadVend AS id,
+    m.CLI_USUARIO_DOMICILIO_LOCALIDAD
+FROM gd_esquema.Maestra m
+WHERE m.CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
 GROUP BY CLI_USUARIO_DOMICILIO_LOCALIDAD
-
---Todas las provincias de los clientes
+HAVING NOT EXISTS (
+    SELECT 1
+    FROM SSGT.Localidad l
+    WHERE l.d_localidad = CLI_USUARIO_DOMICILIO_LOCALIDAD
+);
+--Todas las provincias de los vendedores
 INSERT INTO SSGT.Provincia
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -580,16 +581,20 @@ from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_PROVINCIA
 
---Todas las provincias de los vendedores
-DECLARE @CantProvCli INT = 23;
+--Todas las provincias de los clientes
+DECLARE @CantProvVen INT = 23;
 INSERT INTO SSGT.Provincia
 SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantProvCli AS id, -- Asegura que el ID comience desde 24
-CLI_USUARIO_DOMICILIO_PROVINCIA
+	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantProvVen AS id, -- Asegura que el ID comience desde 24
+m.CLI_USUARIO_DOMICILIO_PROVINCIA
 from gd_esquema.Maestra m
-WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+WHERE m.CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY CLI_USUARIO_DOMICILIO_PROVINCIA
-
+HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Provincia p
+	WHERE p.d_provincia = CLI_USUARIO_DOMICILIO_PROVINCIA
+);
 -- Migra todos los domicilios de los clientes.
 INSERT INTO SSGT.Domicilio
 SELECT
@@ -613,7 +618,7 @@ CLI_USUARIO_DOMICILIO_PISO,
 CLI_USUARIO_DOMICILIO_DEPTO,
 CLI_USUARIO_DOMICILIO_CP
 
--- Migra todos los domicilios de los vendedores.
+-- Migra todos los domicilios de los vendedores (Error: Los vendedeores no tiene domicilio)
 DECLARE @CantDomCli INT = 83979;
 INSERT INTO SSGT.Domicilio
 SELECT
@@ -646,7 +651,9 @@ CLI_USUARIO_PASS,
 CLI_USUARIO_FECHA_CREACION
 from gd_esquema.Maestra m
 WHERE CLIENTE_MAIL IS NOT NULL
-GROUP BY CLIENTE_MAIL
+GROUP BY CLIENTE_MAIL,
+		CLI_USUARIO_PASS,
+		CLI_USUARIO_FECHA_CREACION
 
 --Completa usuario(Los que son vendedores)
 DECLARE @CantCli INT = 103592;
@@ -657,8 +664,10 @@ SELECT
     VEN_USUARIO_PASS AS password,
     VEN_USUARIO_FECHA_CREACION AS fecha_creacion
 FROM gd_esquema.Maestra m
-WHERE VENDEDOR_MAIL IS NOT NULL;
-GROUP BY VENDEDOR_MAIL
+WHERE VENDEDOR_MAIL IS NOT NULL
+GROUP BY VENDEDOR_MAIL,
+		VEN_USUARIO_PASS,
+		VEN_USUARIO_FECHA_CREACION
 
 --Completa los vendedores.
 INSERT INTO SSGT.Vendedor
@@ -670,8 +679,10 @@ VENDEDOR_CUIT
 FROM gd_esquema.Maestra m
 JOIN SSGT.Usuario tu on tu.d_email = m.VENDEDOR_MAIL
 WHERE VENDEDOR_CUIT IS NOT NULL
-GROUP BY VENDEDOR_CUIT
-
+GROUP BY tu.id_usuario,
+		VENDEDOR_RAZON_SOCIAL,
+		VENDEDOR_CUIT
+		
 --Completa los clientes.
 INSERT INTO SSGT.Cliente
 SELECT
@@ -683,14 +694,27 @@ CLIENTE_APELLIDO,
 CLIENTE_DNI,
 CLIENTE_FECHA_NAC
 FROM gd_esquema.Maestra m
-JOIN SSGT.Usuario tu	on tu.d_email = m.CLIENTE_MAIL
+JOIN SSGT.Usuario tu	on tu.d_email = m.CLIENTE_MAIL and
+							tu.d_fecha_alta = CLI_USUARIO_FECHA_CREACION
 JOIN SSGT.Domicilio td	on td.d_calle = m.CLI_USUARIO_DOMICILIO_CALLE AND
 							td.d_altura = m.CLI_USUARIO_DOMICILIO_NRO_CALLE AND
 							td.d_piso=m.CLI_USUARIO_DOMICILIO_PISO AND
 							td.d_depto=m.CLI_USUARIO_DOMICILIO_DEPTO AND
 							td.d_codigo_postal=m.CLI_USUARIO_DOMICILIO_CP
 WHERE CLIENTE_DNI IS NOT NULL
-GROUP BY CLIENTE_DNI
+GROUP BY tu.id_usuario,
+		td.id_domicilio,
+		CLIENTE_NOMBRE,
+		CLIENTE_APELLIDO,
+		CLIENTE_DNI,
+		CLIENTE_FECHA_NAC,
+		CLI_USUARIO_DOMICILIO_PROVINCIA
+	HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Cliente c
+	WHERE c.id_cliente = c.id_cliente
+);
+
 
 INSERT INTO SSGT.DetalleVenta
 SELECT
