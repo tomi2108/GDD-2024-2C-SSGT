@@ -471,7 +471,6 @@ CREATE TABLE SSGT.Factura (
     id_factura INT NOT NULL,
     id_vendedor INT NOT NULL,
     id_publicacion INT NOT NULL,
-    id_venta INT NOT NULL,
     fecha DATE,
     importe_total FLOAT
 );
@@ -479,7 +478,7 @@ CREATE TABLE SSGT.Factura (
 CREATE TABLE SSGT.DetalleFactura (
     id_detalle_factura INT NOT NULL,
     id_factura INT NOT NULL,
-    id_concepto INT NOT NULL,
+    id_concepto_factura INT NOT NULL,
     precio FLOAT,
     cantidad INT,
     subtotal FLOAT
@@ -549,6 +548,7 @@ ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_
 -- Migracion de datos
 --Provincia, Localidad, Domicilio, Usuario, Vendedor y Cliente en orden.
 --Luego Publicacion
+
 --Todas las localidades de los Vendedores.
 INSERT INTO SSGT.Localidad
 SELECT
@@ -715,6 +715,31 @@ GROUP BY tu.id_usuario,
 	WHERE c.id_cliente = c.id_cliente
 );
 
+-- PUBLICACION
+--Ver con Almacen y Producto
+INSERT INTO SSGT.Publicacion
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_publicacion,
+	tv.id_vendedor,
+    ta.id_almacen,
+	tpr.id_producto,
+    PUBLICACION_CODIGO,
+    PUBLICACION_DESCRIPCION,
+    PUBLICACION_FECHA AS fecha_inicio,
+    PUBLICACION_FECHA_V AS fecha_fin,
+    PUBLICACION_STOCK,
+    PUBLICACION_PRECIO,
+    PUBLICACION_COSTO,
+    PUBLICACION_PORC_VENTA
+FROM gd_esquema.Maestra m
+JOIN SSGT.Producto tpr ON tpr.id_producto = m.PRODUCTO_CODIGO
+JOIN SSGT.Vendedor tv ON tv.id_vendedor = m.VENDEDOR_MAIL OR
+						tv.id_vendedor = m.VENDEDOR_RAZON_SOCIAL OR
+						tv.id_vendedor = m.VENDEDOR_CUIT
+JOIN SSGT.Almacen ta ON ta.id_almacen = m.ALMACEN_CODIGO
+WHERE m.PUBLICACION_CODIGO IS NOT NULL AND m.PUBLICACION_PRECIO IS NOT NULL;
+
+--VENTA
 
 INSERT INTO SSGT.DetalleVenta
 SELECT
@@ -749,6 +774,8 @@ FROM gd_esquema.Maestra
 WHERE ENVIO_TIPO IS NOT NULL
 GROUP BY ENVIO_TIPO 
 
+--ENVIO
+	
 INSERT INTO SSGT.Envio
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -770,7 +797,9 @@ SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
 PAGO_NRO_TARJETA, PAGO_FECHA, PAGO_FECHA_VENC_TARJETA, "PAGO_CANT_CUOTAS "
 from gd_esquema.Maestra 
-    
+
+--PAGO
+	
 INSERT INTO SSGT.Pago
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -781,3 +810,35 @@ td.numero_tarjeta = m.PAGO_NRO_TARJETA,
 td.f_pago = m.PAGO_FECHA
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
+
+--FACTURA
+
+INSERT INTO SSGT.Concepto_Det_Factura
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_concepto_factura,
+    FACTURA_DET_TIPO
+FROM gd_esquema.Maestra
+WHERE FACTURA_DET_TIPO IS NOT NULL
+GROUP BY FACTURA_DET_TIPO;
+
+INSERT INTO SSGT.DetalleFactura
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_detalle_factura,
+    tf.id_factura,
+    tcdf.id_concepto_factura,
+    m.FACTURA_DET_PRECIO,
+    m.FACTURA_DET_CANTIDAD,
+    m.FACTURA_DET_SUBTOTAL
+FROM gd_esquema.Maestra m
+JOIN SSGT.Factura tf ON tf.id_factura = m.FACTURA_NUMERO 
+JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.id_concepto_factura = m.FACTURA_DET_TIPO
+WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
+
+INSERT INTO SSGT.Factura
+SELECT 
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_factura, 
+tv.id_vendedor,tp.id_publicacion, m.FACTURA_FECHA, m.FACTURA_TOTAL
+from gd_esquema.Maestra m
+JOIN SSGT.Vendedor tv on tv.id_vendedor= m.VENDEDOR_MAIL
+JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
+WHERE m.FACTURA_TOTAL IS NOT NULL;
