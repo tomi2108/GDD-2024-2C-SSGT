@@ -838,7 +838,6 @@ where m.PRODUCTO_RUBRO_DESCRIPCION is not null
       FROM SSGT.Rubro a 
       WHERE a.id_rubro = a.id_rubro
   );
-
 --Subrubro
 insert into SSGT.Subrubro
 select DISTINCT 
@@ -848,13 +847,15 @@ select DISTINCT
 from gd_esquema.Maestra m
 	JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
 	where m.PRODUCTO_SUB_RUBRO is not null
-  AND NOT EXISTS (
+ group by m.PRODUCTO_SUB_RUBRO,
+		r.id_rubro
+		HAVING NOT EXISTS (
       SELECT 1 
       FROM SSGT.subrubro sr
       WHERE sr.id_subrubro = sr.id_subrubro
   );
---Hasta acá, la migración no tira errores, pero pueden estar mal--
 
+--Hasta acá, la migración no tira errores, pero pueden estar mal--
 -- PUBLICACION
 --Ver con Almacen y Producto
 INSERT INTO SSGT.Publicacion
