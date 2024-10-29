@@ -103,6 +103,10 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Producto;
     END
+	    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Almacen') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Almacen;
+    END
 END
 
 IF OBJECT_ID('SSGT.Venta', 'U') IS NOT NULL 
@@ -275,8 +279,6 @@ BEGIN
 END
 GO
 
-
-
 -- Verificación y eliminación de tablas si ya existen
 IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL DROP TABLE SSGT.Domicilio;
 IF OBJECT_ID('SSGT.Provincia', 'U') IS NOT NULL DROP TABLE SSGT.Provincia;
@@ -306,7 +308,6 @@ IF OBJECT_ID('SSGT.Concepto_Det_Factura', 'U') IS NOT NULL DROP TABLE SSGT.Conce
 IF OBJECT_ID('SSGT.DomicilioSeq', 'SO') IS NOT NULL
     DROP SEQUENCE SSGT.DomicilioSeq;
 
-
 -- Verificación y eliminación del esquema si ya existe
 IF EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'SSGT')
     DROP SCHEMA SSGT;
@@ -322,7 +323,7 @@ CREATE TABLE SSGT.Domicilio (
     id_provincia INT NOT NULL,
     id_localidad INT NOT NULL,
     d_calle VARCHAR(100),
-    d_altura INT,
+    d_altura varchar(6),
     d_piso VARCHAR(10),
     d_depto VARCHAR(5),
     d_codigo_postal VARCHAR(5)
@@ -408,7 +409,9 @@ CREATE TABLE SSGT.Publicacion (
 --    d_titulo VARCHAR(1000),
     d_descripcion VARCHAR(1000),
     fecha_inicio DATE,
-    fecha_fin DATE,
+	fecha_fin DATE,
+	d_stock INT,
+	d_precio FLOAT,
     costo FLOAT,
     porcentaje_venta FLOAT
 );
@@ -418,8 +421,7 @@ CREATE TABLE SSGT.Venta (
     id_detalle_venta INT NOT NULL,
     id_cliente INT NOT NULL,
     id_publicacion INT NOT NULL,
-    importe_total FLOAT,
-    fecha DATE
+    importe_total FLOAT
 );
 
 CREATE TABLE SSGT.Envio (
@@ -427,7 +429,7 @@ CREATE TABLE SSGT.Envio (
     id_venta INT NOT NULL,
     id_domicilio INT NOT NULL,
     id_tipo_envio INT NOT NULL,
-    f_progamada  DATE,
+    f_programada  DATE,
     hora_inicial DATETIME2,
     hora_final DATETIME2,
 	f_entrega DATE,
@@ -493,8 +495,6 @@ CREATE TABLE SSGT.Concepto_Det_Factura (
     d_concepto VARCHAR(100)
 );
 
-
-
 -- Crea la secuencia comenzando en 1
 CREATE SEQUENCE SSGT.DomicilioSeq
     START WITH 1
@@ -538,7 +538,6 @@ ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tip
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Publicacion	FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
-
 --ALTER TABLE SSGT.Localidad			ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
@@ -549,6 +548,7 @@ ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_m
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
+ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
 ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
@@ -556,10 +556,6 @@ ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_clie
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
 -- Migracion de datos
--- Migracion de datos
---Provincia, Localidad, Domicilio, Usuario, Vendedor y Cliente en orden.
---Luego Publicacion
-
 --Todas las localidades de los Vendedores.
 INSERT INTO SSGT.Localidad
 SELECT
@@ -664,20 +660,13 @@ SELECT
 	null,
 	null,
 	null
-	
-FROM 
-    gd_esquema.Maestra m
-JOIN 
-    SSGT.Provincia provincia ON m.ALMACEN_PROVINCIA = provincia.d_provincia
-JOIN 
-    SSGT.Localidad localidad ON m.ALMACEN_LOCALIDAD = localidad.d_localidad
-group by
-
-	 provincia.id_provincia ,          
-    localidad.id_localidad,          
-    m.ALMACEN_CALLE,
-    m.ALMACEN_NRO_CALLE;
-
+FROM gd_esquema.Maestra m
+JOIN SSGT.Provincia provincia ON m.ALMACEN_PROVINCIA = provincia.d_provincia
+JOIN SSGT.Localidad localidad ON m.ALMACEN_LOCALIDAD = localidad.d_localidad
+group by provincia.id_provincia ,          
+		localidad.id_localidad,          
+		m.ALMACEN_CALLE,
+		m.ALMACEN_NRO_CALLE;
 
 --Completa usuario(Los que son clientes)
 INSERT INTO SSGT.Usuario
@@ -752,6 +741,49 @@ GROUP BY tu.id_usuario,
 	WHERE c.id_cliente = c.id_cliente
 );
 
+--Medio de Pago
+INSERT INTO SSGT.MedioPago
+SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), PAGO_MEDIO_PAGO
+FROM gd_esquema.Maestra
+WHERE PAGO_MEDIO_PAGO IS NOT NULL
+GROUP BY PAGO_MEDIO_PAGO 
+
+--Tipo de Envio
+INSERT INTO SSGT.TipoEnvio
+SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), ENVIO_TIPO
+FROM gd_esquema.Maestra
+WHERE ENVIO_TIPO IS NOT NULL
+GROUP BY ENVIO_TIPO 
+
+--DETALLE DE VENTA
+INSERT INTO SSGT.DetalleVenta
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+VENTA_DET_PRECIO,
+VENTA_DET_CANT,
+VENTA_DET_SUB_TOTAL,
+VENTA_FECHA
+from gd_esquema.Maestra
+WHERE VENTA_DET_PRECIO IS NOT NULL AND
+		VENTA_DET_CANT IS NOT NULL
+
+--MARCA
+insert into SSGT.Marca
+select DISTINCT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_marca,
+	m.PRODUCTO_MARCA as d_marca
+from gd_esquema.Maestra m
+where m.PRODUCTO_MARCA is not null;
+
+--MODELO
+insert into SSGT.Modelo
+select DISTINCT 
+    m.PRODUCTO_MOD_CODIGO AS id_modelo,
+	m.PRODUCTO_MOD_DESCRIPCION as d_modelo
+from gd_esquema.Maestra m
+where m.PRODUCTO_MOD_DESCRIPCION is not null and m.PRODUCTO_MOD_CODIGO is not null;
+--Hasta acá, la migración no tira errores--
+
 -- PUBLICACION
 --Ver con Almacen y Producto
 INSERT INTO SSGT.Publicacion
@@ -776,9 +808,7 @@ JOIN SSGT.Vendedor tv ON tv.id_vendedor = m.VENDEDOR_MAIL OR
 JOIN SSGT.Almacen ta ON ta.id_almacen = m.ALMACEN_CODIGO
 WHERE m.PUBLICACION_CODIGO IS NOT NULL AND m.PUBLICACION_PRECIO IS NOT NULL;
 
-
 --VENTA
-
 INSERT INTO SSGT.DetalleVenta
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -799,21 +829,7 @@ JOIN SSGT.Usuario tc on
 JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
 WHERE VENTA_CODIGO IS NOT NULL
 
-
-INSERT INTO SSGT.MedioPago
-SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), PAGO_MEDIO_PAGO
-FROM gd_esquema.Maestra
-WHERE PAGO_MEDIO_PAGO IS NOT NULL
-GROUP BY PAGO_MEDIO_PAGO 
-
-INSERT INTO SSGT.TipoEnvio
-SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), ENVIO_TIPO
-FROM gd_esquema.Maestra
-WHERE ENVIO_TIPO IS NOT NULL
-GROUP BY ENVIO_TIPO 
-
 --ENVIO
-	
 INSERT INTO SSGT.Envio
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -837,7 +853,6 @@ PAGO_NRO_TARJETA, PAGO_FECHA, PAGO_FECHA_VENC_TARJETA, "PAGO_CANT_CUOTAS "
 from gd_esquema.Maestra 
 
 --PAGO
-	
 INSERT INTO SSGT.Pago
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -898,8 +913,6 @@ JOIN
         d.id_provincia = (SELECT id_provincia FROM SSGT.Provincia pcia WHERE pcia.d_provincia = m.ALMACEN_PROVINCIA)
  where m.ALMACEN_CODIGO is not null and m.ALMACEN_COSTO_DIA_AL is not null;
 
-
-
 --RUBRO
 insert into SSGT.Rubro
 select DISTINCT 
@@ -920,25 +933,6 @@ from gd_esquema.Maestra m
 JOIN 
     SSGT.Rubro r ON r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
 	where PRODUCTO_SUB_RUBRO is not null;
-	
-
---MARCA
-insert into SSGT.Marca
-select DISTINCT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_marca,
-	m.PRODUCTO_MARCA as d_marca
-	
-from gd_esquema.Maestra m
-where m.PRODUCTO_MARCA is not null;
-
---MODELO
-insert into SSGT.Modelo
-select DISTINCT 
-    m.PRODUCTO_MOD_CODIGO AS id_modelo,
-	m.PRODUCTO_MOD_DESCRIPCION as d_modelo
-	
-from gd_esquema.Maestra m
-where m.PRODUCTO_MOD_DESCRIPCION is not null and m.PRODUCTO_MOD_CODIGO is not null;
 
 --PRODUCTO
 insert into SSGT.Producto
@@ -950,7 +944,6 @@ select
 	mo.id_modelo as  id_modelo,
 	sub.id_subrubro as id_subrubro,
 	alm.id_almacen as id_almacen
-
 from gd_esquema.Maestra m
 JOIN SSGT.Marca mar ON mar.id_marca= m.PRODUCTO_MARCA
 JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
