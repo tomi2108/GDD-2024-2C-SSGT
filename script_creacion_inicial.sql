@@ -782,7 +782,80 @@ select DISTINCT
 	m.PRODUCTO_MOD_DESCRIPCION as d_modelo
 from gd_esquema.Maestra m
 where m.PRODUCTO_MOD_DESCRIPCION is not null and m.PRODUCTO_MOD_CODIGO is not null;
---Hasta acá, la migración no tira errores--
+
+--ALMACEN
+insert into SSGT.Almacen
+select
+	M.ALMACEN_CODIGO,
+    d.id_domicilio,
+	m.ALMACEN_COSTO_DIA_AL as costo_dia
+from gd_esquema.Maestra m
+JOIN SSGT.Domicilio d ON d.d_calle = m.ALMACEN_CALLE AND 
+						d.d_altura = m.ALMACEN_NRO_CALLE AND
+						d.id_localidad = (SELECT id_localidad FROM SSGT.Localidad loc WHERE loc.d_localidad = m.ALMACEN_LOCALIDAD) AND
+						d.id_provincia = (SELECT id_provincia FROM SSGT.Provincia pcia WHERE pcia.d_provincia = m.ALMACEN_PROVINCIA)
+ where m.ALMACEN_CODIGO is not null and
+		m.ALMACEN_COSTO_DIA_AL is not null
+		group by m.ALMACEN_CODIGO,
+		m.ALMACEN_COSTO_DIA_AL,
+		d.id_domicilio
+	HAVING NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.Almacen a 
+      WHERE a.id_almacen = a.id_almacen
+  );
+
+  --CONCEPTO DET FACTURA
+INSERT INTO SSGT.Concepto_Det_Factura
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_concepto_factura,
+    FACTURA_DET_TIPO
+FROM gd_esquema.Maestra
+WHERE FACTURA_DET_TIPO IS NOT NULL
+GROUP BY FACTURA_DET_TIPO;
+
+--Detalle Pago
+INSERT INTO SSGT.DetallePago
+SELECT 
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+PAGO_NRO_TARJETA,
+PAGO_FECHA,
+PAGO_FECHA_VENC_TARJETA,
+PAGO_CANT_CUOTAS
+from gd_esquema.Maestra
+WHERE PAGO_NRO_TARJETA IS NOT NULL
+
+--Subrubro
+insert into SSGT.Subrubro
+select DISTINCT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
+	m.PRODUCTO_SUB_RUBRO as d_subrubro
+from gd_esquema.Maestra m
+	where PRODUCTO_SUB_RUBRO is not null
+	group by m.producto_sub_rubro
+		HAVING NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.Subrubro a 
+      WHERE a.id_subrubro = a.id_subrubro
+  );
+
+  --RUBRO
+insert into SSGT.Rubro
+select DISTINCT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_rubro,
+	id_subrubro,
+	m.PRODUCTO_RUBRO_DESCRIPCION as d_rubro	
+from gd_esquema.Maestra m
+JOIN SSGT.Subrubro sr on sr.d_subrubro = m.PRODUCTO_SUB_RUBRO
+where m.PRODUCTO_RUBRO_DESCRIPCION is not null
+	group by id_subrubro,
+			m.PRODUCTO_RUBRO_DESCRIPCION
+		HAVING NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.Rubro a 
+      WHERE a.id_rubro = a.id_rubro
+  );
+--Hasta acá, la migración no tira errores, pero pueden estar mal--
 
 -- PUBLICACION
 --Ver con Almacen y Producto
@@ -808,14 +881,7 @@ JOIN SSGT.Vendedor tv ON tv.id_vendedor = m.VENDEDOR_MAIL OR
 JOIN SSGT.Almacen ta ON ta.id_almacen = m.ALMACEN_CODIGO
 WHERE m.PUBLICACION_CODIGO IS NOT NULL AND m.PUBLICACION_PRECIO IS NOT NULL;
 
---VENTA
-INSERT INTO SSGT.DetalleVenta
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
-VENTA_CODIGO, VENTA_DET_PRECIO, VENTA_DET_CANT, VENTA_DET_SUB_TOTAL
-from gd_esquema.Maestra 
-
--- Falta completar con la tabla cliente
+--Venta
 INSERT INTO SSGT.Venta
 SELECT 
 VENTA_CODIGO
@@ -846,12 +912,6 @@ td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO,
 td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
 
-INSERT INTO SSGT.DetallePago
-SELECT 
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
-PAGO_NRO_TARJETA, PAGO_FECHA, PAGO_FECHA_VENC_TARJETA, "PAGO_CANT_CUOTAS "
-from gd_esquema.Maestra 
-
 --PAGO
 INSERT INTO SSGT.Pago
 SELECT 
@@ -864,16 +924,7 @@ td.f_pago = m.PAGO_FECHA
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
 
---FACTURA
-
-INSERT INTO SSGT.Concepto_Det_Factura
-SELECT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_concepto_factura,
-    FACTURA_DET_TIPO
-FROM gd_esquema.Maestra
-WHERE FACTURA_DET_TIPO IS NOT NULL
-GROUP BY FACTURA_DET_TIPO;
-
+--Detalle Factura
 INSERT INTO SSGT.DetalleFactura
 SELECT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_detalle_factura,
@@ -887,6 +938,7 @@ JOIN SSGT.Factura tf ON tf.id_factura = m.FACTURA_NUMERO
 JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.id_concepto_factura = m.FACTURA_DET_TIPO
 WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
 
+--Factura
 INSERT INTO SSGT.Factura
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_factura, 
@@ -895,44 +947,6 @@ from gd_esquema.Maestra m
 JOIN SSGT.Vendedor tv on tv.id_vendedor= m.VENDEDOR_MAIL
 JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
 WHERE m.FACTURA_TOTAL IS NOT NULL;
-
---ALMACEN
-
-insert into SSGT.Almacen
-select 
-	M.ALMACEN_CODIGO as  id_almacen,
-    d.id_domicilio,
-	m.ALMACEN_COSTO_DIA_AL as costo_dia
-
-from gd_esquema.Maestra m
-JOIN 
-    SSGT.Domicilio d ON 
-        d.d_calle = m.ALMACEN_CALLE AND 
-        d.d_altura = m.ALMACEN_NRO_CALLE AND
-        d.id_localidad = (SELECT id_localidad FROM SSGT.Localidad loc WHERE loc.d_localidad = m.ALMACEN_LOCALIDAD) AND
-        d.id_provincia = (SELECT id_provincia FROM SSGT.Provincia pcia WHERE pcia.d_provincia = m.ALMACEN_PROVINCIA)
- where m.ALMACEN_CODIGO is not null and m.ALMACEN_COSTO_DIA_AL is not null;
-
---RUBRO
-insert into SSGT.Rubro
-select DISTINCT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_rubro,
-	m.PRODUCTO_RUBRO_DESCRIPCION as d_rubro
-	
-from gd_esquema.Maestra m
-where PRODUCTO_RUBRO_DESCRIPCION is not null;
-
---SUBRUBRO
-insert into SSGT.Subrubro
-select DISTINCT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
-	r.id_rubro,
-	m.PRODUCTO_SUB_RUBRO as d_subrubro
-	
-from gd_esquema.Maestra m
-JOIN 
-    SSGT.Rubro r ON r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
-	where PRODUCTO_SUB_RUBRO is not null;
 
 --PRODUCTO
 insert into SSGT.Producto
