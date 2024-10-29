@@ -825,35 +825,33 @@ PAGO_CANT_CUOTAS
 from gd_esquema.Maestra
 WHERE PAGO_NRO_TARJETA IS NOT NULL
 
---Subrubro
-insert into SSGT.Subrubro
-select DISTINCT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
-	m.PRODUCTO_SUB_RUBRO as d_subrubro
-from gd_esquema.Maestra m
-	where PRODUCTO_SUB_RUBRO is not null
-	group by m.producto_sub_rubro
-		HAVING NOT EXISTS (
-      SELECT 1 
-      FROM SSGT.Subrubro a 
-      WHERE a.id_subrubro = a.id_subrubro
-  );
-
   --RUBRO
 insert into SSGT.Rubro
 select DISTINCT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_rubro,
-	id_subrubro,
 	m.PRODUCTO_RUBRO_DESCRIPCION as d_rubro	
 from gd_esquema.Maestra m
-JOIN SSGT.Subrubro sr on sr.d_subrubro = m.PRODUCTO_SUB_RUBRO
 where m.PRODUCTO_RUBRO_DESCRIPCION is not null
-	group by id_subrubro,
-			m.PRODUCTO_RUBRO_DESCRIPCION
+	group by m.PRODUCTO_RUBRO_DESCRIPCION
 		HAVING NOT EXISTS (
       SELECT 1 
       FROM SSGT.Rubro a 
       WHERE a.id_rubro = a.id_rubro
+  );
+
+--Subrubro
+insert into SSGT.Subrubro
+select DISTINCT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
+	id_rubro,
+	m.PRODUCTO_SUB_RUBRO as d_subrubro
+from gd_esquema.Maestra m
+	JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
+	where m.PRODUCTO_SUB_RUBRO is not null
+  AND NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.subrubro sr
+      WHERE sr.id_subrubro = sr.id_subrubro
   );
 --Hasta acá, la migración no tira errores, pero pueden estar mal--
 
