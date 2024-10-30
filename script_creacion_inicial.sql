@@ -887,14 +887,15 @@ select
 	sub.id_subrubro,
 	mar.id_marca,
 	mo.id_modelo,
-	m.PRODUCTO_DESCRIPCION as d_descripcion,
-	m.PRODUCTO_PRECIO as precio	
+	m.PRODUCTO_DESCRIPCION,
+	m.PRODUCTO_PRECIO
 from gd_esquema.Maestra m
 JOIN SSGT.Marca mar ON mar.id_marca = (select TOP 1 id_marca from SSGT.Marca mar where mar.d_marca = m.PRODUCTO_MARCA)
 JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
-JOIN SSGT.Subrubro sub ON sub.id_subrubro = (select TOP 1 id_subrubro from SSGT.Subrubro sr where sr.d_subrubro = m.PRODUCTO_SUB_RUBRO)
-JOIN SSGT.Almacen alm ON alm.id_domicilio = (select TOP 1 id_domicilio FROM SSGT.Domicilio d where d.d_calle = m.ALMACEN_CALLE and
-																							d.d_altura = m.ALMACEN_NRO_CALLE)
+JOIN SSGT.Subrubro sub ON sub.id_subrubro = (select TOP 1 id_subrubro from SSGT.Subrubro sub where sub.d_subrubro = m.PRODUCTO_SUB_RUBRO)
+JOIN SSGT.Almacen alm ON alm.id_almacen = m.ALMACEN_CODIGO
+ where m.producto_codigo is not null and
+		m.PRODUCTO_DESCRIPCION is not null
 	group by m.producto_codigo,
 	alm.id_almacen,
 	sub.id_subrubro,
@@ -902,11 +903,11 @@ JOIN SSGT.Almacen alm ON alm.id_domicilio = (select TOP 1 id_domicilio FROM SSGT
 	mo.id_modelo,
 	m.PRODUCTO_DESCRIPCION,
 	m.PRODUCTO_PRECIO
-		HAVING NOT EXISTS (
-      SELECT 1
-      FROM SSGT.Producto p 
-      WHERE m.PRODUCTO_CODIGO = m.PRODUCTO_CODIGO
-  );
+	HAVING NOT EXISTS (
+    SELECT 1
+    FROM SSGT.Producto p
+    WHERE p.id_producto = p.id_producto
+);
   
 -- PUBLICACION
 --Ver con Almacen y Producto
