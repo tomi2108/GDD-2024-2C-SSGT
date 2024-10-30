@@ -2,14 +2,14 @@ USE GD2C2024;
 GO
 -- Eliminación de foreign keys antes de eliminar las constraints primarias
 
-/*IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
+IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Subrubro_Rubro') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Subrubro DROP CONSTRAINT FK_Subrubro_Rubro;
     END
-END*/
-
+END
+/*
 IF OBJECT_ID('SSGT.Rubro', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Rubro_Subrubro') AND type = 'F')
@@ -17,7 +17,7 @@ BEGIN
         ALTER TABLE SSGT.Rubro DROP CONSTRAINT FK_Rubro_Subrubro;
     END
 END
-
+*/
 IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Domicilio_Provincia') AND type = 'F')
@@ -375,12 +375,12 @@ CREATE TABLE SSGT.Vendedor (
 
 CREATE TABLE SSGT.Rubro (
     id_rubro INT NOT NULL,
-	id_subrubro INT NOT NULL,
     d_rubro VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Subrubro (
     id_subrubro INT NOT NULL,
+	id_rubro INT NOT NULL,
     d_subrubro VARCHAR(100)
 );
 
@@ -557,12 +557,13 @@ ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
---ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
-ALTER TABLE SSGT.Rubro				ADD CONSTRAINT FK_Rubro_Subro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
+ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
+--ALTER TABLE SSGT.Rubro				ADD CONSTRAINT FK_Rubro_Subro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+
 
 -- Migracion de datos
 --Todas las localidades de los Vendedores.
@@ -847,36 +848,36 @@ PAGO_CANT_CUOTAS
 from gd_esquema.Maestra
 WHERE PAGO_NRO_TARJETA IS NOT NULL
 
---Subrubro
-insert into SSGT.Subrubro
-select DISTINCT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
-	m.PRODUCTO_SUB_RUBRO as d_subrubro
-from gd_esquema.Maestra m
-	where m.PRODUCTO_SUB_RUBRO is not null
- group by m.PRODUCTO_SUB_RUBRO
-		HAVING NOT EXISTS (
-      SELECT 1 
-      FROM SSGT.subrubro sr
-      WHERE sr.id_subrubro = sr.id_subrubro
-);
-
 --RUBRO
 insert into SSGT.Rubro
 select DISTINCT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_rubro,
-	id_subrubro,
 	m.PRODUCTO_RUBRO_DESCRIPCION as d_rubro	
 from gd_esquema.Maestra m
-join SSGT.Subrubro sr on sr.d_subrubro = m.PRODUCTO_SUB_RUBRO
 where m.PRODUCTO_RUBRO_DESCRIPCION is not null
-	group by m.PRODUCTO_RUBRO_DESCRIPCION,
-	id_subrubro
+	group by m.PRODUCTO_RUBRO_DESCRIPCION
 		HAVING NOT EXISTS (
       SELECT 1 
       FROM SSGT.Rubro a 
       WHERE a.id_rubro = a.id_rubro
   );
+
+  --Subrubro
+insert into SSGT.Subrubro
+select DISTINCT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
+	r.id_rubro,
+	m.PRODUCTO_SUB_RUBRO as d_subrubro
+from gd_esquema.Maestra m
+JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
+	where m.PRODUCTO_SUB_RUBRO is not null
+ group by m.PRODUCTO_SUB_RUBRO,
+		r.id_rubro
+		HAVING NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.subrubro sr
+      WHERE sr.id_subrubro = sr.id_subrubro
+);
 
 --Hasta acá, la migración no tira errores, pero pueden estar mal--
 --PRODUCTO
