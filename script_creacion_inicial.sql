@@ -1,11 +1,20 @@
 USE GD2C2024;
 GO
 -- Eliminación de foreign keys antes de eliminar las constraints primarias
-IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
+
+/*IF OBJECT_ID('SSGT.Subrubro', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Subrubro_Rubro') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Subrubro DROP CONSTRAINT FK_Subrubro_Rubro;
+    END
+END*/
+
+IF OBJECT_ID('SSGT.Rubro', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Rubro_Subrubro') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Rubro DROP CONSTRAINT FK_Rubro_Subrubro;
     END
 END
 
@@ -366,12 +375,12 @@ CREATE TABLE SSGT.Vendedor (
 
 CREATE TABLE SSGT.Rubro (
     id_rubro INT NOT NULL,
+	id_subrubro INT NOT NULL,
     d_rubro VARCHAR(100)
 );
 
 CREATE TABLE SSGT.Subrubro (
     id_subrubro INT NOT NULL,
-    id_rubro INT NOT NULL,
     d_subrubro VARCHAR(100)
 );
 
@@ -392,7 +401,7 @@ CREATE TABLE SSGT.Almacen (
 );
 
 CREATE TABLE SSGT.Producto (
-    id_producto INT NOT NULL,
+    id_producto VARCHAR(30) NOT NULL,
     id_almacen INT NOT NULL,
     id_subrubro INT NOT NULL,
     id_marca INT NOT NULL,
@@ -404,7 +413,7 @@ CREATE TABLE SSGT.Producto (
 CREATE TABLE SSGT.Publicacion (
     id_publicacion INT NOT NULL,
     id_vendedor INT NOT NULL,
-    id_producto INT NOT NULL,
+    id_producto varchar(30) NOT NULL,
 	id_almacen INT NOT NULL,
 --    d_titulo VARCHAR(1000),
     d_descripcion VARCHAR(1000),
@@ -430,9 +439,9 @@ CREATE TABLE SSGT.Envio (
     id_domicilio INT NOT NULL,
     id_tipo_envio INT NOT NULL,
     f_programada  DATE,
-    hora_inicial DATETIME2,
-    hora_final DATETIME2,
-	f_entrega DATE,
+    hora_inicial INT,
+    hora_final INT,
+	f_entrega DATETIME2,
     costo FLOAT
 );
 
@@ -527,7 +536,6 @@ ALTER TABLE SSGT.Concepto_Det_Factura ADD CONSTRAINT PK_ConceptoDetFactura PRIMA
 
 -- Creación de FOREIGN KEY constraints
 ALTER TABLE SSGT.Almacen			ADD CONSTRAINT FK_Almacen_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
-
 ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
 ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
@@ -549,7 +557,8 @@ ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
-ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
+--ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
+ALTER TABLE SSGT.Rubro				ADD CONSTRAINT FK_Rubro_Subro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
@@ -773,7 +782,13 @@ select DISTINCT
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_marca,
 	m.PRODUCTO_MARCA as d_marca
 from gd_esquema.Maestra m
-where m.PRODUCTO_MARCA is not null;
+where m.PRODUCTO_MARCA is not null
+group by m.PRODUCTO_MARCA
+	HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Marca mar
+	WHERE mar.id_marca= mar.id_marca
+);
 
 --MODELO
 insert into SSGT.Modelo
@@ -781,7 +796,14 @@ select DISTINCT
     m.PRODUCTO_MOD_CODIGO AS id_modelo,
 	m.PRODUCTO_MOD_DESCRIPCION as d_modelo
 from gd_esquema.Maestra m
-where m.PRODUCTO_MOD_DESCRIPCION is not null and m.PRODUCTO_MOD_CODIGO is not null;
+where m.PRODUCTO_MOD_DESCRIPCION is not null and m.PRODUCTO_MOD_CODIGO is not null
+group by m.PRODUCTO_MOD_CODIGO,
+		m.PRODUCTO_MOD_DESCRIPCION
+	HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Modelo mo
+	WHERE mo.id_modelo = mo.id_modelo
+);
 
 --ALMACEN
 insert into SSGT.Almacen
@@ -825,37 +847,67 @@ PAGO_CANT_CUOTAS
 from gd_esquema.Maestra
 WHERE PAGO_NRO_TARJETA IS NOT NULL
 
-  --RUBRO
+--Subrubro
+insert into SSGT.Subrubro
+select DISTINCT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
+	m.PRODUCTO_SUB_RUBRO as d_subrubro
+from gd_esquema.Maestra m
+	where m.PRODUCTO_SUB_RUBRO is not null
+ group by m.PRODUCTO_SUB_RUBRO
+		HAVING NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.subrubro sr
+      WHERE sr.id_subrubro = sr.id_subrubro
+);
+
+--RUBRO
 insert into SSGT.Rubro
 select DISTINCT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_rubro,
+	id_subrubro,
 	m.PRODUCTO_RUBRO_DESCRIPCION as d_rubro	
 from gd_esquema.Maestra m
+join SSGT.Subrubro sr on sr.d_subrubro = m.PRODUCTO_SUB_RUBRO
 where m.PRODUCTO_RUBRO_DESCRIPCION is not null
-	group by m.PRODUCTO_RUBRO_DESCRIPCION
+	group by m.PRODUCTO_RUBRO_DESCRIPCION,
+	id_subrubro
 		HAVING NOT EXISTS (
       SELECT 1 
       FROM SSGT.Rubro a 
       WHERE a.id_rubro = a.id_rubro
   );
---Subrubro
-insert into SSGT.Subrubro
-select DISTINCT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
-	id_rubro,
-	m.PRODUCTO_SUB_RUBRO as d_subrubro
-from gd_esquema.Maestra m
-	JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
-	where m.PRODUCTO_SUB_RUBRO is not null
- group by m.PRODUCTO_SUB_RUBRO,
-		r.id_rubro
-		HAVING NOT EXISTS (
-      SELECT 1 
-      FROM SSGT.subrubro sr
-      WHERE sr.id_subrubro = sr.id_subrubro
-  );
 
 --Hasta acá, la migración no tira errores, pero pueden estar mal--
+--PRODUCTO
+insert into SSGT.Producto
+select 
+	m.producto_codigo,
+	alm.id_almacen,
+	sub.id_subrubro,
+	mar.id_marca,
+	mo.id_modelo,
+	m.PRODUCTO_DESCRIPCION as d_descripcion,
+	m.PRODUCTO_PRECIO as precio	
+from gd_esquema.Maestra m
+JOIN SSGT.Marca mar ON mar.id_marca = (select TOP 1 id_marca from SSGT.Marca mar where mar.d_marca = m.PRODUCTO_MARCA)
+JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
+JOIN SSGT.Subrubro sub ON sub.id_subrubro = (select TOP 1 id_subrubro from SSGT.Subrubro sr where sr.d_subrubro = m.PRODUCTO_SUB_RUBRO)
+JOIN SSGT.Almacen alm ON alm.id_domicilio = (select TOP 1 id_domicilio FROM SSGT.Domicilio d where d.d_calle = m.ALMACEN_CALLE and
+																							d.d_altura = m.ALMACEN_NRO_CALLE)
+	group by m.producto_codigo,
+	alm.id_almacen,
+	sub.id_subrubro,
+	mar.id_marca,
+	mo.id_modelo,
+	m.PRODUCTO_DESCRIPCION,
+	m.PRODUCTO_PRECIO
+		HAVING NOT EXISTS (
+      SELECT 1
+      FROM SSGT.Producto p 
+      WHERE m.PRODUCTO_CODIGO = m.PRODUCTO_CODIGO
+  );
+  
 -- PUBLICACION
 --Ver con Almacen y Producto
 INSERT INTO SSGT.Publicacion
@@ -897,18 +949,21 @@ WHERE VENTA_CODIGO IS NOT NULL
 --ENVIO
 INSERT INTO SSGT.Envio
 SELECT 
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
-tv.id_venta,tv.id_domicilio,te.id_tipo_envio, 
-m.ENVIO_FECHA_PROGAMADA , m.ENVIO_FECHA_ENTREGA,
-m.ENVIO_HORA_INICIO, m.ENVIO_HORA_FIN_INICIO, m.ENVIO_COSTO
+	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
+	tv.id_venta,
+	td.id_domicilio,
+	te.id_tipo_envio, 
+	m.ENVIO_FECHA_PROGAMADA,
+	m.ENVIO_HORA_INICIO,
+	m.ENVIO_HORA_FIN_INICIO,
+	m.ENVIO_FECHA_ENTREGA,
+	m.ENVIO_COSTO
 from gd_esquema.Maestra m
 JOIN SSGT.TipoEnvio te on te.d_tipo_envio = m.ENVIO_TIPO
-JOIN SSGT.Domicilio td 
-on 
-td.d_calle= m.CLI_USUARIO_DOMICILIO_CALLE, 
-td.d_altura= m.CLI_USUARIO_DOMICILIO_NRO_CALLE,
-td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO,
-td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO
+JOIN SSGT.Domicilio td on td.d_calle= m.CLI_USUARIO_DOMICILIO_CALLE and
+						td.d_altura= m.CLI_USUARIO_DOMICILIO_NRO_CALLE and
+						td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO and
+						td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
 
 --PAGO
@@ -946,19 +1001,3 @@ from gd_esquema.Maestra m
 JOIN SSGT.Vendedor tv on tv.id_vendedor= m.VENDEDOR_MAIL
 JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
 WHERE m.FACTURA_TOTAL IS NOT NULL;
-
---PRODUCTO
-insert into SSGT.Producto
-select 
-	m.producto_codigo as c_producto,
-	m.PRODUCTO_DESCRIPCION as d_descripcion,
-	m.PRODUCTO_PRECIO as precio,
-	mar.id_marca as id_marca,
-	mo.id_modelo as  id_modelo,
-	sub.id_subrubro as id_subrubro,
-	alm.id_almacen as id_almacen
-from gd_esquema.Maestra m
-JOIN SSGT.Marca mar ON mar.id_marca= m.PRODUCTO_MARCA
-JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
-JOIN SSGT.Subrubro sub ON sub.id_subrubro = m.PRODUCTO_SUB_RUBRO
-JOIN SSGT.Almacen alm ON alm.id_almacen = m.ALMACEN_CODIGO;
