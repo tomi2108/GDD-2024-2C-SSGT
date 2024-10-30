@@ -1,0 +1,35 @@
+Estrategias de decisiones
+
+Luego de realizar el DER, se empezó a realizar la migración de datos.
+Antes de ello, se debieron crear los siguientes objetos:
+· Las tablas con la estructura realizada en el DER
+· El esquema SSGT 
+· Las Primary Key constraints
+· Las Foreign Key constraint.
+
+Nos dividimos las tablas por integrante para migrar
+· Producto	· Venta			    · Cliente  	· Publicación
+· Modelo    · Detalle Venta	· Vendedor	· Factura
+· Subrubro	· Pago    			· Usuario  	· DetalleFactura
+· Marca  		· Medio Pago		· Domicilio	· ConceptoFactura
+· Rubro  		· Detalle Pago	· Provincia
+· Almacen  	· Envio    			· Localidad
+		        · Tipo Envio
+
+Al  migrar algunas tablas, se tuvo que cambiar ciertos tipos de datos.
+Por ejemplo, había horarios en la tabla maestra con el tipo de datos INT, y lo habíamos puesto como DATETIME2.
+Notamos que las primeras tablas a migrar eran las que no tenían FK, porque no podíamos corroborar si la migración estaba bien hecha.
+Se agregó al principio del código las condiciones para eliminar las FK, luego las PK, las tablas y el esquema.
+Conforme íbamos realizando la migración de algunas tablas, el scrypt iba tirando errores, y íbamos agregando las restricciones de FK, y las agregábamos en el área de eliminación de FK.
+
+La estructura del Script quedó de la siguiente forma:
+· Eliminacion de FK.
+· Eliminacion de PK.
+· Eliminacion de Tablas.
+· Eliminacion de sequencias (Domicilio Rubro Subrubro).
+· Eliminacion de esquema SSGT.
+· Crea Esquema SSGT.
+· CreaTablas
+· Crea PK
+· Crea FK
+· Migración de Datos.
