@@ -9,7 +9,7 @@ BEGIN
         ALTER TABLE SSGT.Subrubro DROP CONSTRAINT FK_Subrubro_Rubro;
     END
 END
-/*
+
 IF OBJECT_ID('SSGT.Rubro', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Rubro_Subrubro') AND type = 'F')
@@ -17,7 +17,7 @@ BEGIN
         ALTER TABLE SSGT.Rubro DROP CONSTRAINT FK_Rubro_Subrubro;
     END
 END
-*/
+
 IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL 
 BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Domicilio_Provincia') AND type = 'F')
