@@ -36,6 +36,10 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Almacen DROP CONSTRAINT FK_Almacen_Domicilio;
     END
+	IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Almacen_Producto') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Almacen DROP CONSTRAINT FK_Almacen_Producto;
+    END
 END
 
 IF OBJECT_ID('SSGT.Envio', 'U') IS NOT NULL 
@@ -84,10 +88,6 @@ END
 
 IF OBJECT_ID('SSGT.Producto', 'U') IS NOT NULL 
 BEGIN
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Producto_Almacen') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Producto DROP CONSTRAINT FK_Producto_Almacen;
-    END
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Producto_Subrubro') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Producto DROP CONSTRAINT FK_Producto_Subrubro;
@@ -100,6 +100,10 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Producto DROP CONSTRAINT FK_Producto_Modelo;
     END
+	    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Producto_Almacen') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Producto DROP CONSTRAINT FK_Producto_Almacen;
+    END
 END
 
 IF OBJECT_ID('SSGT.Publicacion', 'U') IS NOT NULL 
@@ -107,10 +111,6 @@ BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Vendedor') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Vendedor;
-    END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Producto') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Producto;
     END
 	    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Almacen') AND type = 'F')
     BEGIN
@@ -408,13 +408,13 @@ CREATE TABLE SSGT.Modelo (
 
 CREATE TABLE SSGT.Almacen (
     id_almacen INT NOT NULL,
+	id_producto INT NOT NULL,
     id_domicilio INT NOT NULL,
     costo_dia FLOAT
 );
 
 CREATE TABLE SSGT.Producto (
 	id_producto INT NOT NULL,
-    id_almacen INT NOT NULL,
     id_subrubro INT NOT NULL,
     id_marca INT NOT NULL,
     id_modelo INT NOT NULL,
@@ -549,6 +549,7 @@ ALTER TABLE SSGT.Concepto_Det_Factura ADD CONSTRAINT PK_ConceptoDetFactura PRIMA
 
 -- Creación de FOREIGN KEY constraints
 ALTER TABLE SSGT.Almacen			ADD CONSTRAINT FK_Almacen_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
+ALTER TABLE SSGT.Almacen			ADD CONSTRAINT FK_Almacen_Producto		FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
 ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
 ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
@@ -563,7 +564,6 @@ ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_v
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
-ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Almacen		FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
@@ -576,6 +576,7 @@ ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_d
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+
 
 -- Migracion de datos
 --Todas las localidades de los Vendedores.
@@ -853,28 +854,6 @@ group by m.PRODUCTO_MOD_CODIGO,
 	WHERE mo.id_modelo = mo.id_modelo
 );
 
---ALMACEN
-insert into SSGT.Almacen
-select
-	M.ALMACEN_CODIGO,
-    d.id_domicilio,
-	m.ALMACEN_COSTO_DIA_AL as costo_dia
-from gd_esquema.Maestra m
-JOIN SSGT.Domicilio d ON d.d_calle = m.ALMACEN_CALLE AND 
-						d.d_altura = m.ALMACEN_NRO_CALLE AND
-						d.id_localidad = (SELECT id_localidad FROM SSGT.Localidad loc WHERE loc.d_localidad = m.ALMACEN_LOCALIDAD) AND
-						d.id_provincia = (SELECT id_provincia FROM SSGT.Provincia pcia WHERE pcia.d_provincia = m.ALMACEN_PROVINCIA)
- where m.ALMACEN_CODIGO is not null and
-		m.ALMACEN_COSTO_DIA_AL is not null
-		group by m.ALMACEN_CODIGO,
-		m.ALMACEN_COSTO_DIA_AL,
-		d.id_domicilio
-	HAVING NOT EXISTS (
-      SELECT 1 
-      FROM SSGT.Almacen a 
-      WHERE a.id_almacen = a.id_almacen
-  );
-
   --CONCEPTO DET FACTURA
 INSERT INTO SSGT.Concepto_Det_Factura
 SELECT 
@@ -888,7 +867,6 @@ GROUP BY FACTURA_DET_TIPO
       FROM SSGT.Concepto_Det_Factura cf
       WHERE cf.d_concepto = cf.d_concepto
   );
-
 
 --Detalle Pago
 INSERT INTO SSGT.DetallePago
@@ -932,11 +910,10 @@ JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
       WHERE sr.id_subrubro = sr.id_subrubro
 );
 
---Producto. inserta 653mil registros. Debe estar mal Joineado.
+--Producto.
 INSERT INTO SSGT.PRODUCTO
 	SELECT  
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_producto,
-		a.id_almacen, 
 		sub.id_subrubro, 
 		ma.id_marca, 
 		mo.id_modelo, 
@@ -944,12 +921,11 @@ INSERT INTO SSGT.PRODUCTO
 		m.PRODUCTO_DESCRIPCION, 
 		m.PRODUCTO_PRECIO
 	FROM gd_esquema.Maestra m
-	JOIN SSGT.Almacen a ON a.id_almacen = m.ALMACEN_CODIGO
 	JOIN SSGT.Subrubro sub ON sub.d_subrubro = m.PRODUCTO_SUB_RUBRO
 	JOIN SSGT.Marca ma ON ma.d_marca = m.PRODUCTO_MARCA
 	JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
 	WHERE m.PRODUCTO_CODIGO IS NOT NULL
-	GROUP BY a.id_almacen, 
+	GROUP BY 
 		sub.id_subrubro, 
 		ma.id_marca, 
 		mo.id_modelo, 
@@ -967,6 +943,39 @@ INSERT INTO SSGT.PRODUCTO
 		AND p.id_marca = (SELECT TOP 1 id_marca from ssgt.marca ma where ma.d_marca = m.PRODUCTO_MARCA)
 		AND p.id_modelo = m.producto_mod_codigo
 	);
+
+--ALMACEN
+insert into SSGT.Almacen
+select
+	M.ALMACEN_CODIGO,
+	p.id_producto,
+    d.id_domicilio,
+	m.ALMACEN_COSTO_DIA_AL as costo_dia
+from gd_esquema.Maestra m
+
+
+JOIN SSGT.Rubro r on r.id_rubro			= (SELECT id_rubro FROM SSGT.Rubro r WHERE r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)
+JOIN SSGT.Domicilio d ON d.d_calle		= m.ALMACEN_CALLE AND 
+						d.d_altura		= m.ALMACEN_NRO_CALLE AND
+						d.id_localidad	= (SELECT id_localidad FROM SSGT.Localidad loc	WHERE loc.d_localidad = m.ALMACEN_LOCALIDAD) AND
+						d.id_provincia	= (SELECT id_provincia FROM SSGT.Provincia pcia	WHERE pcia.d_provincia = m.ALMACEN_PROVINCIA)
+
+JOIN SSGT.Producto p ON p.id_subrubro	= (SELECT id_subrubro	FROM SSGT.Subrubro s	WHERE s.d_subrubro = m.PRODUCTO_SUB_RUBRO) AND
+						p.id_marca		= (SELECT id_marca	FROM SSGT.Marca ma			WHERE ma.d_marca = m.PRODUCTO_MARCA) AND
+						p.id_modelo		= m.PRODUCTO_MOD_CODIGO AND
+						p.codigo_producto = m.PRODUCTO_CODIGO AND
+						p.d_descripcion = m.PRODUCTO_DESCRIPCION AND
+						P.precio = m.PRODUCTO_PRECIO
+ where m.ALMACEN_CODIGO is not null and	m.ALMACEN_COSTO_DIA_AL is not null
+		group by m.ALMACEN_CODIGO,
+				p.id_producto,
+				d.id_domicilio,
+				m.ALMACEN_COSTO_DIA_AL
+	HAVING NOT EXISTS (
+      SELECT 1 
+      FROM SSGT.Almacen a 
+      WHERE a.id_almacen = M.ALMACEN_CODIGO
+  );
   
 -- PUBLICACION
 --Ver con Almacen y Producto
