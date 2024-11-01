@@ -112,7 +112,7 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Vendedor;
     END
-	    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Almacen') AND type = 'F')
+	IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Almacen') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Almacen;
     END
@@ -427,8 +427,8 @@ CREATE TABLE SSGT.Producto (
 CREATE TABLE SSGT.Publicacion (
     id_publicacion INT NOT NULL,
     id_vendedor INT NOT NULL,
-    id_producto INT NOT NULL,
 	id_almacen INT NOT NULL,
+	codigo_publicacion INT NOT NULL,
 --    d_titulo VARCHAR(1000),
     d_descripcion VARCHAR(1000),
     fecha_inicio DATE,
@@ -567,7 +567,7 @@ ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) R
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
-ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
+--ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY (id_producto) REFERENCES SSGT.Producto(id_producto);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
 ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
@@ -1006,29 +1006,48 @@ where m.ALMACEN_CODIGO is not null
 	WHERE a.id_almacen = a.id_almacen
   );
   
--- PUBLICACION
---Ver con Almacen y Producto
-INSERT INTO SSGT.Publicacion
+--Publicacion
+  INSERT INTO SSGT.Publicacion
 SELECT 
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_publicacion,
+	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_publicacion,
 	tv.id_vendedor,
-    ta.id_almacen,
-	tpr.id_producto,
-    PUBLICACION_CODIGO,
-    PUBLICACION_DESCRIPCION,
-    PUBLICACION_FECHA AS fecha_inicio,
-    PUBLICACION_FECHA_V AS fecha_fin,
-    PUBLICACION_STOCK,
-    PUBLICACION_PRECIO,
-    PUBLICACION_COSTO,
-    PUBLICACION_PORC_VENTA
+	ta.id_almacen,
+	m.PUBLICACION_CODIGO,
+    m.PUBLICACION_DESCRIPCION,
+    m.PUBLICACION_FECHA AS fecha_inicio,
+    m.PUBLICACION_FECHA_V AS fecha_fin,
+    m.PUBLICACION_STOCK,
+    m.PUBLICACION_PRECIO,
+    m.PUBLICACION_COSTO,
+    m.PUBLICACION_PORC_VENTA
 FROM gd_esquema.Maestra m
-JOIN SSGT.Producto tpr ON tpr.id_producto = m.PRODUCTO_CODIGO
-JOIN SSGT.Vendedor tv ON tv.id_vendedor = m.VENDEDOR_MAIL OR
-						tv.id_vendedor = m.VENDEDOR_RAZON_SOCIAL OR
-						tv.id_vendedor = m.VENDEDOR_CUIT
-JOIN SSGT.Almacen ta ON ta.id_almacen = m.ALMACEN_CODIGO
-WHERE m.PUBLICACION_CODIGO IS NOT NULL AND m.PUBLICACION_PRECIO IS NOT NULL;
+JOIN SSGT.Almacen ta ON ta.id_producto = (SELECT TOP 1 p.id_producto from SSGT.Producto p WHERE p.d_descripcion = m.PRODUCTO_DESCRIPCION and
+												p.codigo_producto = m.PRODUCTO_CODIGO and
+												p.precio = m.PRODUCTO_PRECIO and
+												p.id_marca = (SELECT TOP 1 ma.id_marca from SSGT.Marca ma where ma.d_marca = m.PRODUCTO_MARCA) and
+												p.id_subrubro = (SELECT TOP 1 sub.id_subrubro from SSGT.Subrubro sub where sub.d_subrubro= m.PRODUCTO_SUB_RUBRO) and
+												P.id_modelo = m.PRODUCTO_MOD_CODIGO) and
+						ta.id_domicilio = (SELECT TOP 1 d.id_domicilio from SSGT.Domicilio d WHERE d.d_calle = m.ALMACEN_CALLE and d.d_altura = m.ALMACEN_NRO_CALLE) and
+						ta.codigo_almacen = m.ALMACEN_CODIGO and
+						ta.costo_dia = m.ALMACEN_COSTO_DIA_AL
+JOIN SSGT.Vendedor tv ON tv.d_razon_social= m.VENDEDOR_RAZON_SOCIAL AND
+						tv.d_cuit = m.VENDEDOR_CUIT
+WHERE m.ALMACEN_CODIGO is not null and m.VENDEDOR_RAZON_SOCIAL is not null
+GROUP BY m.PUBLICACION_CODIGO,
+	tv.id_vendedor,
+	ta.id_almacen,
+    m.PUBLICACION_DESCRIPCION,
+    m.PUBLICACION_FECHA,
+    m.PUBLICACION_FECHA_V,
+    m.PUBLICACION_STOCK,
+    m.PUBLICACION_PRECIO,
+    m.PUBLICACION_COSTO,
+    m.PUBLICACION_PORC_VENTA
+	HAVING NOT EXISTS(
+	SELECT 1
+	FROM ssgt.Publicacion pu
+	where pu.id_publicacion = pu.id_publicacion
+	);
 
 --Venta
 INSERT INTO SSGT.Venta
