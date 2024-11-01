@@ -410,6 +410,7 @@ CREATE TABLE SSGT.Almacen (
     id_almacen INT NOT NULL,
 	id_producto INT NOT NULL,
     id_domicilio INT NOT NULL,
+	codigo_almacen INT NOT NULL,
     costo_dia FLOAT
 );
 
@@ -577,7 +578,6 @@ ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_p
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
-
 -- Migracion de datos
 --Todas las localidades de los Vendedores.
 INSERT INTO SSGT.Localidad
@@ -587,6 +587,11 @@ VEN_USUARIO_DOMICILIO_LOCALIDAD
 from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_LOCALIDAD
+HAVING NOT EXISTS (
+    SELECT 1
+    FROM SSGT.Localidad l
+    WHERE l.d_localidad = M.VEN_USUARIO_DOMICILIO_LOCALIDAD
+);
 
 --Todas las localidades de los Clientes.
 DECLARE @CantLocalidadVend INT = 89;
@@ -610,6 +615,11 @@ VEN_USUARIO_DOMICILIO_PROVINCIA
 from gd_esquema.Maestra m
 WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 GROUP BY VEN_USUARIO_DOMICILIO_PROVINCIA
+HAVING NOT EXISTS (
+    SELECT 1
+    FROM SSGT.Provincia l
+    WHERE l.d_provincia = VEN_USUARIO_DOMICILIO_PROVINCIA
+);
 
 --Todas las provincias de los clientes
 DECLARE @CantProvVen INT = 23;
@@ -625,34 +635,38 @@ HAVING NOT EXISTS (
 	FROM SSGT.Provincia p
 	WHERE p.d_provincia = CLI_USUARIO_DOMICILIO_PROVINCIA
 );
--- Migra todos los domicilios de los clientes.
-INSERT INTO SSGT.Domicilio
-SELECT
-    NEXT VALUE FOR SSGT.DomicilioSeq AS id_domicilio,
-tp.id_provincia,
-tl.id_localidad,
-CLI_USUARIO_DOMICILIO_CALLE,
-CLI_USUARIO_DOMICILIO_NRO_CALLE,
-CLI_USUARIO_DOMICILIO_PISO,
-CLI_USUARIO_DOMICILIO_DEPTO,
-CLI_USUARIO_DOMICILIO_CP
-from gd_esquema.Maestra m
-JOIN SSGT.Localidad tl on tl.d_localidad = m.cli_usuario_domicilio_localidad
-JOIN SSGT.Provincia tp on tp.d_provincia = m.cli_usuario_domicilio_provincia
-WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
-GROUP BY tl.id_localidad,
-tp.id_provincia,
-CLI_USUARIO_DOMICILIO_CALLE,
-CLI_USUARIO_DOMICILIO_NRO_CALLE,
-CLI_USUARIO_DOMICILIO_PISO,
-CLI_USUARIO_DOMICILIO_DEPTO,
-CLI_USUARIO_DOMICILIO_CP
+--completa los domicilios de los almacenes (65)
+INSERT INTO SSGT.Domicilio 
+SELECT  
+--    NEXT VALUE FOR SSGT.DomicilioSeq AS id_domicilio,
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
+    provincia.id_provincia as id_provincia,          
+    localidad.id_localidad as id_localidad,          
+    m.ALMACEN_CALLE as d_calle,
+    m.ALMACEN_NRO_CALLE as n_calle,
+	null,
+	null,
+	null
+FROM gd_esquema.Maestra m
+JOIN SSGT.Provincia provincia ON m.ALMACEN_PROVINCIA = provincia.d_provincia
+JOIN SSGT.Localidad localidad ON m.ALMACEN_LOCALIDAD = localidad.d_localidad
+WHERE M.ALMACEN_CALLE IS NOT NULL
+group by provincia.id_provincia ,          
+		localidad.id_localidad,          
+		m.ALMACEN_CALLE,
+		m.ALMACEN_NRO_CALLE
+HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Domicilio d
+	WHERE d.id_domicilio = d.id_domicilio
+);
 
--- Migra todos los domicilios de los vendedores (Error: Los vendedeores no tiene domicilio)
-DECLARE @CantDomCli INT = 83979;
+-- Migra todos los domicilios de los vendedores
+DECLARE @CantDomAlm INT = 65;
 INSERT INTO SSGT.Domicilio
 SELECT
-    NEXT VALUE FOR SSGT.DomicilioSeq AS id_domicilio,
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantDomAlm,
+--    NEXT VALUE FOR SSGT.DomicilioSeq AS id_domicilio,
 tp.id_provincia,
 tl.id_localidad,
 m.VEN_USUARIO_DOMICILIO_CALLE,
@@ -671,25 +685,50 @@ GROUP BY tp.id_provincia,
 		m.VEN_USUARIO_DOMICILIO_PISO,
 		m.VEN_USUARIO_DOMICILIO_DEPTO,
 		m.VEN_USUARIO_DOMICILIO_CP
+HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Domicilio d
+	WHERE d.d_calle = M.VEN_USUARIO_DOMICILIO_CALLE and
+	d.d_altura = M.VEN_USUARIO_DOMICILIO_NRO_CALLE AND
+	d.d_codigo_postal = m.VEN_USUARIO_DOMICILIO_CP and
+	d.d_piso = m.VEN_USUARIO_DOMICILIO_PISO and
+	d.d_codigo_postal = m.VEN_USUARIO_DOMICILIO_CP
+);
 
---completa los domicilios de los almacenes
-INSERT INTO SSGT.Domicilio 
-SELECT  
-    NEXT VALUE FOR SSGT.DomicilioSeq AS id_domicilio,
-    provincia.id_provincia as id_provincia,          
-    localidad.id_localidad as id_localidad,          
-    m.ALMACEN_CALLE as d_calle,
-    m.ALMACEN_NRO_CALLE as n_calle,
-	null,
-	null,
-	null
-FROM gd_esquema.Maestra m
-JOIN SSGT.Provincia provincia ON m.ALMACEN_PROVINCIA = provincia.d_provincia
-JOIN SSGT.Localidad localidad ON m.ALMACEN_LOCALIDAD = localidad.d_localidad
-group by provincia.id_provincia ,          
-		localidad.id_localidad,          
-		m.ALMACEN_CALLE,
-		m.ALMACEN_NRO_CALLE;
+-- Migra todos los domicilios de los clientes.
+DECLARE @CantDomAlmVen INT = 154;
+INSERT INTO SSGT.Domicilio
+SELECT
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantDomAlmVen,
+--    NEXT VALUE FOR SSGT.DomicilioSeq AS id_domicilio,
+tp.id_provincia,
+tl.id_localidad,
+CLI_USUARIO_DOMICILIO_CALLE,
+CLI_USUARIO_DOMICILIO_NRO_CALLE,
+CLI_USUARIO_DOMICILIO_PISO,
+CLI_USUARIO_DOMICILIO_DEPTO,
+CLI_USUARIO_DOMICILIO_CP
+from gd_esquema.Maestra m
+JOIN SSGT.Localidad tl on tl.d_localidad = m.cli_usuario_domicilio_localidad
+JOIN SSGT.Provincia tp on tp.d_provincia = m.cli_usuario_domicilio_provincia
+WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
+GROUP BY tl.id_localidad,
+tp.id_provincia,
+CLI_USUARIO_DOMICILIO_CALLE,
+CLI_USUARIO_DOMICILIO_NRO_CALLE,
+CLI_USUARIO_DOMICILIO_PISO,
+CLI_USUARIO_DOMICILIO_DEPTO,
+CLI_USUARIO_DOMICILIO_CP
+HAVING NOT EXISTS (
+	SELECT 1
+	FROM SSGT.Domicilio d
+	WHERE d.d_calle = m.CLI_USUARIO_DOMICILIO_CALLE and 
+	d.d_altura = m.CLI_USUARIO_DOMICILIO_NRO_CALLE and
+	d.d_codigo_postal = m.CLI_USUARIO_DOMICILIO_CP and
+	d.d_depto = m.CLI_USUARIO_DOMICILIO_DEPTO and
+	d.d_piso = m.CLI_USUARIO_DOMICILIO_PISO
+);
+
 
 --Completa usuario(Los que son clientes)
 INSERT INTO SSGT.Usuario
@@ -727,7 +766,6 @@ GROUP BY VENDEDOR_MAIL,
 		FROM SSGT.Usuario u
 		where u.d_email= m.VENDEDOR_MAIL and u.d_password = m.VEN_USUARIO_PASS and u.d_fecha_alta = m.VEN_USUARIO_FECHA_CREACION
 		);
-
 
 --Completa los vendedores.
 INSERT INTO SSGT.Vendedor
@@ -938,43 +976,38 @@ INSERT INTO SSGT.PRODUCTO
 	HAVING NOT EXISTS (
 		SELECT 1 
 		FROM SSGT.PRODUCTO p
-		WHERE p.codigo_producto = m.PRODUCTO_CODIGO
-		AND p.id_subrubro = (SELECT TOP 1 id_subrubro from ssgt.subrubro sub where sub.d_subrubro = m.PRODUCTO_SUB_RUBRO)
-		AND p.id_marca = (SELECT TOP 1 id_marca from ssgt.marca ma where ma.d_marca = m.PRODUCTO_MARCA)
-		AND p.id_modelo = m.producto_mod_codigo
+		WHERE p.id_producto = p.id_producto
+--		AND p.id_subrubro = (SELECT TOP 1 id_subrubro from ssgt.subrubro sub where sub.d_subrubro = m.PRODUCTO_SUB_RUBRO)
+--		AND p.id_marca = (SELECT TOP 1 id_marca from ssgt.marca ma where ma.d_marca = m.PRODUCTO_MARCA)
+--		AND p.id_modelo = m.producto_mod_codigo
 	);
 
---ALMACEN
+--Migración Almacén (Ignora los Rubros, devuelve el mismo id_subrubro).
 insert into SSGT.Almacen
 select
-	M.ALMACEN_CODIGO,
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_almacen,
 	p.id_producto,
     d.id_domicilio,
+	M.ALMACEN_CODIGO,
 	m.ALMACEN_COSTO_DIA_AL as costo_dia
 from gd_esquema.Maestra m
-
-
-JOIN SSGT.Rubro r on r.id_rubro			= (SELECT id_rubro FROM SSGT.Rubro r WHERE r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)
-JOIN SSGT.Domicilio d ON d.d_calle		= m.ALMACEN_CALLE AND 
-						d.d_altura		= m.ALMACEN_NRO_CALLE AND
-						d.id_localidad	= (SELECT id_localidad FROM SSGT.Localidad loc	WHERE loc.d_localidad = m.ALMACEN_LOCALIDAD) AND
-						d.id_provincia	= (SELECT id_provincia FROM SSGT.Provincia pcia	WHERE pcia.d_provincia = m.ALMACEN_PROVINCIA)
-
-JOIN SSGT.Producto p ON p.id_subrubro	= (SELECT id_subrubro	FROM SSGT.Subrubro s	WHERE s.d_subrubro = m.PRODUCTO_SUB_RUBRO) AND
-						p.id_marca		= (SELECT id_marca	FROM SSGT.Marca ma			WHERE ma.d_marca = m.PRODUCTO_MARCA) AND
-						p.id_modelo		= m.PRODUCTO_MOD_CODIGO AND
-						p.codigo_producto = m.PRODUCTO_CODIGO AND
-						p.d_descripcion = m.PRODUCTO_DESCRIPCION AND
-						P.precio = m.PRODUCTO_PRECIO
- where m.ALMACEN_CODIGO is not null and	m.ALMACEN_COSTO_DIA_AL is not null
+JOIN SSGT.Domicilio d ON d.d_calle	= m.ALMACEN_CALLE AND 
+			d.d_altura	= m.ALMACEN_NRO_CALLE
+JOIN SSGT.Producto p ON p.id_subrubro	= (SELECT TOP 1 s.id_subrubro	FROM SSGT.Subrubro s	WHERE s.d_subrubro = m.PRODUCTO_SUB_RUBRO) AND-- s.id_rubro = (SELECT r.id_rubro FROM SSGT.Rubro r where r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)) and
+			p.id_marca	= (SELECT id_marca	FROM SSGT.Marca ma			WHERE ma.d_marca = m.PRODUCTO_MARCA) AND
+			p.id_modelo	= m.PRODUCTO_MOD_CODIGO AND
+			p.codigo_producto = m.PRODUCTO_CODIGO AND
+			p.d_descripcion = m.PRODUCTO_DESCRIPCION AND
+			P.precio = m.PRODUCTO_PRECIO
+where m.ALMACEN_CODIGO is not null
 		group by m.ALMACEN_CODIGO,
 				p.id_producto,
 				d.id_domicilio,
 				m.ALMACEN_COSTO_DIA_AL
 	HAVING NOT EXISTS (
-      SELECT 1 
-      FROM SSGT.Almacen a 
-      WHERE a.id_almacen = M.ALMACEN_CODIGO
+    SELECT 1 
+    FROM SSGT.Almacen a 
+	WHERE a.id_almacen = a.id_almacen
   );
   
 -- PUBLICACION
