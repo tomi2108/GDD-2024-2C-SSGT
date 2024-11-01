@@ -947,7 +947,7 @@ JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
       WHERE sr.id_subrubro = sr.id_subrubro
 );
 
---Producto.
+--Producto. (Cant: 141079)
 INSERT INTO SSGT.PRODUCTO
 	SELECT  
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_producto,
@@ -978,7 +978,10 @@ INSERT INTO SSGT.PRODUCTO
 		WHERE p.id_producto = p.id_producto
 	);
 
---Migración Almacén (Ignora los Rubros, devuelve el mismo id_subrubro).
+--Migración Almacén
+--(Cant almacen -> Producto: 31920) Los Productos son 141079, pero anula la combinación con Rubros y son menos.
+--Los almacenes son solo 65
+(Ignora los Rubros, devuelve el mismo id_subrubro).
 insert into SSGT.Almacen
 select
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_almacen,
@@ -1006,7 +1009,7 @@ where m.ALMACEN_CODIGO is not null
 	WHERE a.id_almacen = a.id_almacen
   );
   
---Publicacion
+--Publicacion (Cant: 33129).
   INSERT INTO SSGT.Publicacion
 SELECT 
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_publicacion,
@@ -1046,19 +1049,34 @@ GROUP BY m.PUBLICACION_CODIGO,
 	where pu.id_publicacion = pu.id_publicacion
 	);
 
---Venta
+--Venta 99143 (Los Detalles son 99782)
 INSERT INTO SSGT.Venta
 SELECT 
-VENTA_CODIGO
-tdv.id_detalle_venta, tc.id_cliente, tp.id_publicacion, m.VENTA_TOTAL, m.VENTA_FECHA
+VENTA_CODIGO,
+dv.id_detalle_venta,
+c.id_cliente,
+p.id_publicacion,
+m.VENTA_TOTAL
 from gd_esquema.Maestra m
-JOIN SSGT.DetalleVenta tdv on tdv.id_venta = m.VENTA_CODIGO
-JOIN SSGT.Usuario tc on 
-	tc.id_cliente = m.CLIENTE_NOMBRE,
-	tc.id_cliente = m.CLIENTE_APELLIDO,
-	tc.id_cliente = m.CLIENTE_DNI
-JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
+JOIN SSGT.DetalleVenta dv on dv.precio = m.VENTA_DET_PRECIO and
+							dv.cantidad = m.VENTA_DET_CANT and
+							dv.subtotal = m.VENTA_DET_SUB_TOTAL and
+							dv.f_venta = m.VENTA_FECHA
+JOIN SSGT.Cliente c on c.nombre = m.CLIENTE_NOMBRE and
+						c.apellido = m.CLIENTE_APELLIDO and
+						c.dni = m.CLIENTE_DNI
+JOIN SSGT.Publicacion p on p.codigo_publicacion = m.PUBLICACION_CODIGO
 WHERE VENTA_CODIGO IS NOT NULL
+GROUP BY VENTA_CODIGO,
+dv.id_detalle_venta,
+c.id_cliente,
+p.id_publicacion,
+m.VENTA_TOTAL
+	HAVING NOT EXISTS(
+	SELECT 1
+	FROM ssgt.Venta v
+	where v.id_venta = v.id_venta 
+);
 
 --ENVIO
 INSERT INTO SSGT.Envio
