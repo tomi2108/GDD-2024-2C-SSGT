@@ -116,6 +116,10 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Almacen;
     END
+		IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Publicacion_Producto') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Publicacion DROP CONSTRAINT FK_Publicacion_Producto;
+    END
 END
 
 IF OBJECT_ID('SSGT.Venta', 'U') IS NOT NULL 
@@ -127,6 +131,10 @@ BEGIN
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Venta_Publicacion') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Venta DROP CONSTRAINT FK_Venta_Publicacion;
+    END
+	    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Venta_Cliente') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Venta DROP CONSTRAINT FK_Venta_Cliente;
     END
 END
 
@@ -576,6 +584,7 @@ ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_p
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
+
 -- Migracion de datos
 --Todas las localidades de los Vendedores.
 INSERT INTO SSGT.Localidad
@@ -660,7 +669,7 @@ HAVING NOT EXISTS (
 	WHERE d.id_domicilio = d.id_domicilio
 );
 
--- Migra todos los domicilios de los vendedores
+-- Migra todos los domicilios de los vendedores (89)
 DECLARE @CantDomAlm INT = (select count(d.id_domicilio) from ssgt.domicilio d);
 INSERT INTO SSGT.Domicilio
 SELECT
@@ -694,7 +703,7 @@ HAVING NOT EXISTS (
 	d.d_codigo_postal = m.VEN_USUARIO_DOMICILIO_CP
 );
 
--- Migra todos los domicilios de los clientes.
+-- Migra todos los domicilios de los clientes (41298)
 DECLARE @CantDomAlmVen INT = (select count(d.id_domicilio) from ssgt.domicilio d);;
 INSERT INTO SSGT.Domicilio
 SELECT
@@ -729,7 +738,7 @@ HAVING NOT EXISTS (
 );
 
 
---Completa usuario(Los que son clientes)
+--Completa usuario(Los que son clientes: 41298)
 INSERT INTO SSGT.Usuario
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -747,7 +756,7 @@ GROUP BY CLIENTE_MAIL,
 		where u.d_email= m.CLIENTE_MAIL and u.d_password = m.CLI_USUARIO_PASS and u.d_fecha_alta = m.CLI_USUARIO_FECHA_CREACION
 		);
 
---Completa usuario(Los que son vendedores)
+--Completa usuario(Los que son vendedores: 89)
 DECLARE @CantCli INT = (select count(u.id_usuario) from ssgt.usuario u);;
 INSERT INTO SSGT.Usuario
 SELECT 
@@ -766,7 +775,7 @@ GROUP BY VENDEDOR_MAIL,
 		where u.d_email= m.VENDEDOR_MAIL and u.d_password = m.VEN_USUARIO_PASS and u.d_fecha_alta = m.VEN_USUARIO_FECHA_CREACION
 		);
 
---Completa los vendedores.
+--Completa los vendedores. Cant: 89
 INSERT INTO SSGT.Vendedor
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -785,7 +794,7 @@ GROUP BY tu.id_usuario,
 	WHERE v.id_vendedor = v.id_vendedor
 );
 		
---Completa los clientes.
+--Completa los clientes. Cant: 41298
 INSERT INTO SSGT.Cliente
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -817,7 +826,7 @@ GROUP BY tu.id_usuario,
 	WHERE c.id_cliente = c.id_cliente
 );
 
---Medio de Pago
+--Medio de Pago. Cant 5.
 INSERT INTO SSGT.MedioPago
 SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), PAGO_MEDIO_PAGO
 FROM gd_esquema.Maestra
@@ -829,7 +838,7 @@ GROUP BY PAGO_MEDIO_PAGO
 	WHERE mp.id_medio_pago = mp.id_medio_pago
 );
 
---Tipo de Envio
+--Tipo de Envio (3)
 INSERT INTO SSGT.TipoEnvio
 SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), ENVIO_TIPO
 FROM gd_esquema.Maestra
@@ -841,7 +850,7 @@ GROUP BY ENVIO_TIPO
 	WHERE te.id_tipo_envio= te.id_tipo_envio
 );
 
---DETALLE DE VENTA
+--DETALLE DE VENTA (99782)
 INSERT INTO SSGT.DetalleVenta
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -862,7 +871,7 @@ WHERE VENTA_DET_PRECIO IS NOT NULL AND
 	WHERE d.id_detalle_venta= d.id_detalle_venta
 );
 
---MARCA
+--MARCA (4)
 insert into SSGT.Marca
 select DISTINCT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_marca,
@@ -876,7 +885,7 @@ group by m.PRODUCTO_MARCA
 	WHERE mar.id_marca= mar.id_marca
 );
 
---MODELO
+--MODELO (7)
 insert into SSGT.Modelo
 select DISTINCT 
     m.PRODUCTO_MOD_CODIGO AS id_modelo,
@@ -891,7 +900,7 @@ group by m.PRODUCTO_MOD_CODIGO,
 	WHERE mo.id_modelo = mo.id_modelo
 );
 
-  --CONCEPTO DET FACTURA
+  --CONCEPTO DET FACTURA (3)
 INSERT INTO SSGT.Concepto_Det_Factura
 SELECT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_concepto_factura,
@@ -905,7 +914,8 @@ GROUP BY FACTURA_DET_TIPO
       WHERE cf.d_concepto = cf.d_concepto
   );
 
---Detalle Pago
+--Detalle Pago 103598
+--Detalle de Venta hay 99782. ¿No debería haber lo mismo?
 INSERT INTO SSGT.DetallePago
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
@@ -915,8 +925,15 @@ PAGO_FECHA_VENC_TARJETA,
 PAGO_CANT_CUOTAS
 from gd_esquema.Maestra
 WHERE PAGO_NRO_TARJETA IS NOT NULL
+GROUP BY PAGO_NRO_TARJETA,
+PAGO_FECHA,
+PAGO_FECHA_VENC_TARJETA,
+PAGO_CANT_CUOTAS
+HAVING NOT EXISTS(
+SELECT 1 FROM SSGT.DetallePago dp WHERE dp.id_detalle_pago = dp.id_detalle_pago
+);
 
---RUBRO
+--RUBRO (22)
 insert into SSGT.Rubro
 select DISTINCT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_rubro,
@@ -930,7 +947,7 @@ where m.PRODUCTO_RUBRO_DESCRIPCION is not null
       WHERE a.id_rubro = a.id_rubro
   );
 
-  --Subrubro
+  --Subrubro (815)
 insert into SSGT.Subrubro
 select DISTINCT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_subrubro,
@@ -947,7 +964,7 @@ JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
       WHERE sr.id_subrubro = sr.id_subrubro
 );
 
---Producto. (Cant: 141079)
+--Producto. (6893)
 INSERT INTO SSGT.PRODUCTO
 	SELECT  
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_producto,
@@ -958,7 +975,7 @@ INSERT INTO SSGT.PRODUCTO
 		m.PRODUCTO_DESCRIPCION, 
 		m.PRODUCTO_PRECIO
 	FROM gd_esquema.Maestra m
-	JOIN SSGT.Subrubro sub ON sub.d_subrubro = m.PRODUCTO_SUB_RUBRO
+	JOIN SSGT.Subrubro sub ON sub.d_subrubro = m.PRODUCTO_SUB_RUBRO and sub.id_rubro = (SELECT r.id_rubro FROM SSGT.Rubro r WHERE r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)
 	JOIN SSGT.Marca ma ON ma.d_marca = m.PRODUCTO_MARCA
 	JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
 	WHERE m.PRODUCTO_CODIGO IS NOT NULL
@@ -978,10 +995,7 @@ INSERT INTO SSGT.PRODUCTO
 		WHERE p.id_producto = p.id_producto
 	);
 
---Migración Almacén
---(Cant almacen -> Producto: 31920) Los Productos son 141079, pero anula la combinación con Rubros y son menos.
---Los almacenes son solo 65
-(Ignora los Rubros, devuelve el mismo id_subrubro).
+--Migración Almacén (1653).
 insert into SSGT.Almacen
 select
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_almacen,
@@ -1008,9 +1022,9 @@ where m.ALMACEN_CODIGO is not null
     FROM SSGT.Almacen a 
 	WHERE a.id_almacen = a.id_almacen
   );
-  
---Publicacion (Cant: 33129).
-  INSERT INTO SSGT.Publicacion
+
+  --Publicacion (1717)
+INSERT INTO SSGT.Publicacion
 SELECT 
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_publicacion,
 	tv.id_vendedor,
@@ -1025,11 +1039,11 @@ SELECT
     m.PUBLICACION_PORC_VENTA
 FROM gd_esquema.Maestra m
 JOIN SSGT.Almacen ta ON ta.id_producto = (SELECT TOP 1 p.id_producto from SSGT.Producto p WHERE p.d_descripcion = m.PRODUCTO_DESCRIPCION and
-												p.codigo_producto = m.PRODUCTO_CODIGO and
-												p.precio = m.PRODUCTO_PRECIO and
-												p.id_marca = (SELECT TOP 1 ma.id_marca from SSGT.Marca ma where ma.d_marca = m.PRODUCTO_MARCA) and
-												p.id_subrubro = (SELECT TOP 1 sub.id_subrubro from SSGT.Subrubro sub where sub.d_subrubro= m.PRODUCTO_SUB_RUBRO) and
-												P.id_modelo = m.PRODUCTO_MOD_CODIGO) and
+																							p.codigo_producto = m.PRODUCTO_CODIGO and
+																							p.precio = m.PRODUCTO_PRECIO and
+																							p.id_marca = (SELECT TOP 1 ma.id_marca from SSGT.Marca ma where ma.d_marca = m.PRODUCTO_MARCA) and
+																							p.id_subrubro = (SELECT TOP 1 sub.id_subrubro from SSGT.Subrubro sub where sub.d_subrubro= m.PRODUCTO_SUB_RUBRO) and
+																							P.id_modelo = m.PRODUCTO_MOD_CODIGO) and
 						ta.codigo_almacen = m.ALMACEN_CODIGO
 JOIN SSGT.Vendedor tv ON tv.d_razon_social= m.VENDEDOR_RAZON_SOCIAL
 WHERE m.ALMACEN_CODIGO is not null and m.VENDEDOR_RAZON_SOCIAL is not null
@@ -1047,9 +1061,11 @@ GROUP BY m.PUBLICACION_CODIGO,
 	SELECT 1
 	FROM ssgt.Publicacion pu
 	where pu.id_publicacion = pu.id_publicacion
-	);
+);
 
---Venta 99143 (Los Detalles son 99782)
+--Venta				hay 5028
+--(Detalle Pago		hay 103598)
+--(Detalle de Venta	hay 99782)
 INSERT INTO SSGT.Venta
 SELECT 
 VENTA_CODIGO,
