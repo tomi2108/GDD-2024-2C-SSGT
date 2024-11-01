@@ -561,7 +561,6 @@ ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tip
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Publicacion	FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
---ALTER TABLE SSGT.Localidad			ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
@@ -572,7 +571,6 @@ ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Vendedor	FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (id_almacen) REFERENCES SSGT.Almacen(id_almacen);
 ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
---ALTER TABLE SSGT.Rubro				ADD CONSTRAINT FK_Rubro_Subro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Publicacion		FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
@@ -594,7 +592,7 @@ HAVING NOT EXISTS (
 );
 
 --Todas las localidades de los Clientes.
-DECLARE @CantLocalidadVend INT = 89;
+DECLARE @CantLocalidadVend INT = (select count(id_localidad) from ssgt.localidad);
 INSERT INTO SSGT.Localidad
 SELECT
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantLocalidadVend AS id,
@@ -622,7 +620,7 @@ HAVING NOT EXISTS (
 );
 
 --Todas las provincias de los clientes
-DECLARE @CantProvVen INT = 23;
+DECLARE @CantProvVen INT = (select count(p.id_provincia) from ssgt.provincia p);
 INSERT INTO SSGT.Provincia
 SELECT
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantProvVen AS id, -- Asegura que el ID comience desde 24
@@ -635,6 +633,7 @@ HAVING NOT EXISTS (
 	FROM SSGT.Provincia p
 	WHERE p.d_provincia = CLI_USUARIO_DOMICILIO_PROVINCIA
 );
+
 --completa los domicilios de los almacenes (65)
 INSERT INTO SSGT.Domicilio 
 SELECT  
@@ -662,7 +661,7 @@ HAVING NOT EXISTS (
 );
 
 -- Migra todos los domicilios de los vendedores
-DECLARE @CantDomAlm INT = 65;
+DECLARE @CantDomAlm INT = (select count(d.id_domicilio) from ssgt.domicilio d);
 INSERT INTO SSGT.Domicilio
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantDomAlm,
@@ -696,7 +695,7 @@ HAVING NOT EXISTS (
 );
 
 -- Migra todos los domicilios de los clientes.
-DECLARE @CantDomAlmVen INT = 154;
+DECLARE @CantDomAlmVen INT = (select count(d.id_domicilio) from ssgt.domicilio d);;
 INSERT INTO SSGT.Domicilio
 SELECT
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantDomAlmVen,
@@ -749,7 +748,7 @@ GROUP BY CLIENTE_MAIL,
 		);
 
 --Completa usuario(Los que son vendedores)
-DECLARE @CantCli INT = 41298;
+DECLARE @CantCli INT = (select count(u.id_usuario) from ssgt.usuario u);;
 INSERT INTO SSGT.Usuario
 SELECT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @CantCli AS id, -- Asegura que el ID comience desde 41299
@@ -977,9 +976,6 @@ INSERT INTO SSGT.PRODUCTO
 		SELECT 1 
 		FROM SSGT.PRODUCTO p
 		WHERE p.id_producto = p.id_producto
---		AND p.id_subrubro = (SELECT TOP 1 id_subrubro from ssgt.subrubro sub where sub.d_subrubro = m.PRODUCTO_SUB_RUBRO)
---		AND p.id_marca = (SELECT TOP 1 id_marca from ssgt.marca ma where ma.d_marca = m.PRODUCTO_MARCA)
---		AND p.id_modelo = m.producto_mod_codigo
 	);
 
 --Migración Almacén (Ignora los Rubros, devuelve el mismo id_subrubro).
@@ -991,14 +987,14 @@ select
 	M.ALMACEN_CODIGO,
 	m.ALMACEN_COSTO_DIA_AL as costo_dia
 from gd_esquema.Maestra m
-JOIN SSGT.Domicilio d ON d.d_calle	= m.ALMACEN_CALLE AND 
-			d.d_altura	= m.ALMACEN_NRO_CALLE
+JOIN SSGT.Domicilio d ON d.d_calle		= m.ALMACEN_CALLE AND 
+						d.d_altura		= m.ALMACEN_NRO_CALLE
 JOIN SSGT.Producto p ON p.id_subrubro	= (SELECT TOP 1 s.id_subrubro	FROM SSGT.Subrubro s	WHERE s.d_subrubro = m.PRODUCTO_SUB_RUBRO) AND-- s.id_rubro = (SELECT r.id_rubro FROM SSGT.Rubro r where r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)) and
-			p.id_marca	= (SELECT id_marca	FROM SSGT.Marca ma			WHERE ma.d_marca = m.PRODUCTO_MARCA) AND
-			p.id_modelo	= m.PRODUCTO_MOD_CODIGO AND
-			p.codigo_producto = m.PRODUCTO_CODIGO AND
-			p.d_descripcion = m.PRODUCTO_DESCRIPCION AND
-			P.precio = m.PRODUCTO_PRECIO
+						p.id_marca		= (SELECT id_marca	FROM SSGT.Marca ma			WHERE ma.d_marca = m.PRODUCTO_MARCA) AND
+						p.id_modelo		= m.PRODUCTO_MOD_CODIGO AND
+						p.codigo_producto = m.PRODUCTO_CODIGO AND
+						p.d_descripcion = m.PRODUCTO_DESCRIPCION AND
+						P.precio = m.PRODUCTO_PRECIO
 where m.ALMACEN_CODIGO is not null
 		group by m.ALMACEN_CODIGO,
 				p.id_producto,
