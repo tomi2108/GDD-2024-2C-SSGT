@@ -1027,11 +1027,8 @@ JOIN SSGT.Almacen ta ON ta.id_producto = (SELECT TOP 1 p.id_producto from SSGT.P
 												p.id_marca = (SELECT TOP 1 ma.id_marca from SSGT.Marca ma where ma.d_marca = m.PRODUCTO_MARCA) and
 												p.id_subrubro = (SELECT TOP 1 sub.id_subrubro from SSGT.Subrubro sub where sub.d_subrubro= m.PRODUCTO_SUB_RUBRO) and
 												P.id_modelo = m.PRODUCTO_MOD_CODIGO) and
-						ta.id_domicilio = (SELECT TOP 1 d.id_domicilio from SSGT.Domicilio d WHERE d.d_calle = m.ALMACEN_CALLE and d.d_altura = m.ALMACEN_NRO_CALLE) and
-						ta.codigo_almacen = m.ALMACEN_CODIGO and
-						ta.costo_dia = m.ALMACEN_COSTO_DIA_AL
-JOIN SSGT.Vendedor tv ON tv.d_razon_social= m.VENDEDOR_RAZON_SOCIAL AND
-						tv.d_cuit = m.VENDEDOR_CUIT
+						ta.codigo_almacen = m.ALMACEN_CODIGO
+JOIN SSGT.Vendedor tv ON tv.d_razon_social= m.VENDEDOR_RAZON_SOCIAL
 WHERE m.ALMACEN_CODIGO is not null and m.VENDEDOR_RAZON_SOCIAL is not null
 GROUP BY m.PUBLICACION_CODIGO,
 	tv.id_vendedor,
