@@ -1,3 +1,4 @@
+
 USE GD2C2024;
 GO
 -- Eliminación de foreign keys antes de eliminar las constraints primarias
@@ -549,7 +550,6 @@ ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Domicilio		FOREIGN KEY (id_
 ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
 ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Provincia	FOREIGN KEY (id_provincia) REFERENCES SSGT.Provincia(id_provincia);
---ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (id_factura) REFERENCES SSGT.Factura(id_factura);
 ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Concepto_det_factura FOREIGN KEY (id_concepto_factura) REFERENCES SSGT.Concepto_det_factura(id_concepto_factura);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
@@ -1123,20 +1123,21 @@ JOIN SSGT.DetallePago td on td.nro_tarjeta = m.PAGO_NRO_TARJETA and
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
 
---Detalle Factura
+--Detalle Factura (5388)
 INSERT INTO SSGT.DetalleFactura
 SELECT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_detalle_factura,
-    tf.id_factura,
+	tp.id_publicacion,
     tcdf.id_concepto_factura,
     m.FACTURA_DET_PRECIO,
     m.FACTURA_DET_CANTIDAD,
     m.FACTURA_DET_SUBTOTAL
 FROM gd_esquema.Maestra m
-JOIN SSGT.Factura tf ON tf.id_factura = m.FACTURA_NUMERO 
-JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.id_concepto_factura = m.FACTURA_DET_TIPO
+JOIN SSGT.Publicacion tp on tp.publicacion_codigo = m.PUBLICACION_CODIGO
+JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.d_concepto = m.FACTURA_DET_TIPO
 WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
 
+--Falta Migrar Factura
 INSERT INTO SSGT.Factura
 SELECT 
 m.FACTURA_NUMERO, 
@@ -1145,12 +1146,10 @@ tdf.id_detalle_factura,
 m.FACTURA_FECHA,
 m.FACTURA_TOTAL
 from gd_esquema.Maestra m
-JOIN SSGT.Vendedor tv on tv.d_cuit = m.VENDEDOR_CUIT and tv.d_razon_social = m.VENDEDOR_RAZON_SOCIAL
-JOIN SSGT.DetalleFactura tdf on tdf.id_publicacion = (SELECT tpu.id_publicacion FROM SSGT.Publicacion tpu where tpu.publicacion_codigo = m.PUBLICACION_CODIGO) and
+JOIN SSGT.Vendedor		 tv	 on tv.d_cuit = m.VENDEDOR_CUIT and tv.d_razon_social = m.VENDEDOR_RAZON_SOCIAL
+JOIN SSGT.DetalleFactura tdf on tdf.id_publicacion = (SELECT TOP 1 tp.id_publicacion from SSGT.Publicacion tp where tp.publicacion_codigo = m.PUBLICACION_CODIGO) and
 								tdf.id_concepto_factura = (SELECT tcf.id_concepto_factura from ssgt.Concepto_Det_Factura tcf where tcf.d_concepto = m.FACTURA_DET_TIPO) and
 								tdf.precio = m.FACTURA_DET_PRECIO and
 								tdf.cantidad = m.FACTURA_DET_CANTIDAD and
 								tdf.subtotal = m.FACTURA_DET_SUBTOTAL
-
 WHERE m.FACTURA_NUMERO IS NOT NULL
-
