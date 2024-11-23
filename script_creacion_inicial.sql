@@ -133,6 +133,14 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Vendedor;
     END
+	IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Factura_Cliente') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Cliente;
+    END
+	IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Factura_Usuario') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Usuario;
+    END
     IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Factura_Publicacion') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Factura DROP CONSTRAINT FK_Factura_Publicacion;
@@ -506,6 +514,7 @@ CREATE TABLE SSGT.Factura (
     id_factura INT NOT NULL,
     id_vendedor INT NOT NULL,
     id_detalle_factura INT NOT NULL,
+	numero DECIMAL(18,0),
     fecha DATE,
     importe_total FLOAT
 );
@@ -567,6 +576,8 @@ ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_dom
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
+--ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Cliente		FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
+--ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_DetalleFactura		FOREIGN KEY (id_detalle_factura) REFERENCES SSGT.DetalleFactura(id_detalle_factura);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
@@ -581,6 +592,7 @@ ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_ru
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+
 
 -- Migracion de datos
 --Solo localidades de vendedores (89)
@@ -1006,7 +1018,6 @@ SELECT
     m.PUBLICACION_COSTO,
     m.PUBLICACION_PORC_VENTA
 FROM gd_esquema.Maestra m
---Corrigieron que no JOINEA con Almacen
 JOIN SSGT.Almacen ta ON ta.id_almacen = m.ALMACEN_CODIGO
 JOIN SSGT.Producto tp ON tp.id_subrubro = (select TOP 1 sub.id_subrubro from SSGT.Subrubro sub where sub.d_subrubro = m.PRODUCTO_SUB_RUBRO) and
 						tp.id_marca = (select ma.id_marca from SSGT.marca ma where ma.d_marca = m.PRODUCTO_MARCA) and
@@ -1084,7 +1095,7 @@ m.VENTA_TOTAL
 	where tv.id_venta = tv.id_venta
 );
 
---PAGO (4185)
+--PAGO (4042)
 INSERT INTO SSGT.Pago
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -1099,16 +1110,7 @@ JOIN SSGT.DetallePago td on td.nro_tarjeta = m.PAGO_NRO_TARJETA AND
 							td.cuotas = m.PAGO_CANT_CUOTAS							
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
 JOIN SSGT.Venta tv on tv.codigo_venta = m.venta_codigo
-/*				and tv.id_detalle_venta = (SELECT ID_DETALLE_VENTA FROM SSGT.DetalleVenta tdv WHERE tdv.precio = m.VENTA_DET_PRECIO and
-																										tdv.cantidad = m.VENTA_DET_CANT and
-																										tdv.subtotal = m.VENTA_DET_SUB_TOTAL and
-																										tdv.f_venta = m.VENTA_FECHA)
-				 and tv.id_cliente = (SELECT id_cliente From SSGT.Cliente tc where tc.apellido = m.CLIENTE_APELLIDO and
-																						tc.nombre = m.CLIENTE_NOMBRE and
-																						tc.dni = m.CLIENTE_DNI)
-				and tv.id_publicacion = (SELECT id_publicacion From SSGT.Publicacion tp where tp.codigo_publicacion = m.PUBLICACION_CODIGO)
-				and tv.importe_total = m.PAGO_IMPORTE
-*/
+
 group by tv.id_venta,
 tmp.id_medio_pago,
 td.id_detalle_pago,
@@ -1119,8 +1121,7 @@ m.PAGO_IMPORTE
 	where tp.id_pago= tp.id_pago
 );
 
-
---ENVIO	5232
+--ENVIO	5048
 INSERT INTO SSGT.Envio
 SELECT 
 	ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), 
@@ -1138,11 +1139,11 @@ JOIN SSGT.Domicilio td on td.d_calle= m.CLI_USUARIO_DOMICILIO_CALLE and
 						td.d_altura= m.CLI_USUARIO_DOMICILIO_NRO_CALLE and
 						td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO and
 						td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO
-JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
+JOIN SSGT.Venta tv on tv.codigo_venta = m.VENTA_CODIGO
 
 
 
---Detalle Factura (5388)
+--Detalle Factura (5151)
 INSERT INTO SSGT.DetalleFactura
 SELECT 
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_detalle_factura,
@@ -1157,20 +1158,21 @@ JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.d_concepto = m.FACTURA_DET_TIPO
 WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
 
 --Factura
-INSERT INTO SSGT.Factura
+INSERT INTO [SSGT].[Factura] (id_factura, id_vendedor, id_detalle_factura, numero, fecha, importe_total)
 SELECT 
 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id_factura, 
 tv.id_vendedor,
 df.id_detalle_factura,
+m.FACTURA_NUMERO,
 m.FACTURA_FECHA,
 m.FACTURA_TOTAL
 from gd_esquema.Maestra m
-JOIN SSGT.Vendedor tv on tv.id_vendedor= m.VENDEDOR_MAIL
+JOIN SSGT.Vendedor tv on tv.d_cuit = m.VENDEDOR_CUIT
 JOIN SSGT.DetalleFactura df on df.id_publicacion = m.PUBLICACION_CODIGO and
 								df.cantidad = m.FACTURA_DET_CANTIDAD and
-								df.precio = FACTURA_DET_PRECIO and
-								df.subtotal = FACTURA_DET_SUBTOTAL and
-								df.id_concepto_factura = (SELECT TOP 1 cf.id_concepto_factura
+								df.precio = m.FACTURA_DET_PRECIO and
+								df.subtotal = m.FACTURA_DET_SUBTOTAL and
+								df.id_concepto_factura = (SELECT cf.id_concepto_factura
 															FROM SSGT.Concepto_Det_Factura cf
-															where cf.d_concepto = m.FACTURA_DET_TIPO)
-WHERE m.FACTURA_TOTAL IS NOT NULL;
+															where cf.d_concepto = m.FACTURA_DET_TIPO) 
+WHERE m.FACTURA_NUMERO IS NOT NULL;
