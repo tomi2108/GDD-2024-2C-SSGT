@@ -121,10 +121,6 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Venta DROP CONSTRAINT FK_Venta_Detalle_Venta;
     END
-    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Venta_Publicacion') AND type = 'F')
-    BEGIN
-        ALTER TABLE SSGT.Venta DROP CONSTRAINT FK_Venta_Publicacion;
-    END
 	    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Venta_Cliente') AND type = 'F')
     BEGIN
         ALTER TABLE SSGT.Venta DROP CONSTRAINT FK_Venta_Cliente;
@@ -454,6 +450,7 @@ CREATE TABLE SSGT.Venta (
 	id_venta INT NOT NULL,
     id_detalle_venta INT NOT NULL,
     id_cliente INT NOT NULL,
+	codigo_venta DECIMAL(18,0),
     importe_total FLOAT
 );
 
@@ -1062,14 +1059,13 @@ SELECT 1 FROM SSGT.DetalleVenta dv
 WHERE dv.id_detalle_venta = dv.id_detalle_venta
 );
 
---Venta				hay 5232
---(Detalle Pago		hay 103592)
+--Venta hay 5048
 INSERT INTO SSGT.Venta
 SELECT
-m.VENTA_CODIGO,
+ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
 dv.id_detalle_venta,
 c.id_cliente,
-
+m.VENTA_CODIGO,
 m.VENTA_TOTAL
 from gd_esquema.Maestra m
 JOIN SSGT.DetalleVenta dv on dv.precio = m.VENTA_DET_PRECIO and
@@ -1077,42 +1073,16 @@ JOIN SSGT.DetalleVenta dv on dv.precio = m.VENTA_DET_PRECIO and
 							dv.subtotal = m.VENTA_DET_SUB_TOTAL and
 							dv.f_venta = m.VENTA_FECHA
 JOIN SSGT.Cliente c on c.dni = m.CLIENTE_DNI and c.apellido = m.CLIENTE_APELLIDO and c.nombre = m.CLIENTE_NOMBRE
-INSERT INTO SSGT.DetalleVenta
-SELECT
-ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
-pu.id_publicacion,
-m.VENTA_DET_PRECIO,
-m.VENTA_DET_CANT,
-m.VENTA_DET_SUB_TOTAL,
-m.VENTA_FECHA
-from gd_esquema.Maestra m
-join SSGT.Publicacion pu on pu.id_publicacion = m.PUBLICACION_CODIGO
-where venta_det_precio is not null and
-		venta_det_cant is not null and
-		VENTA_DET_SUB_TOTAL is not null and
-		venta_fecha is not null
-		group by 
-		pu.id_publicacion,
-		m.VENTA_DET_PRECIO,
-m.VENTA_DET_CANT,
-m.VENTA_DET_SUB_TOTAL,
-m.VENTA_FECHA
-HAVING NOT EXISTS(
-SELECT 1 FROM SSGT.DetalleVenta dv
-WHERE dv.id_detalle_venta = dv.id_detalle_venta
-);		
 WHERE m.VENTA_CODIGO IS NOT NULL
 GROUP BY m.VENTA_CODIGO,
 dv.id_detalle_venta,
 c.id_cliente,
-pu.id_publicacion,
 m.VENTA_TOTAL
 	HAVING NOT EXISTS(
 	SELECT 1
 	FROM ssgt.Venta tv
 	where tv.id_venta = tv.id_venta
 );
-
 
 --PAGO (4185)
 INSERT INTO SSGT.Pago
@@ -1128,7 +1098,7 @@ JOIN SSGT.DetallePago td on td.nro_tarjeta = m.PAGO_NRO_TARJETA AND
 							td.f_pago = m.PAGO_FECHA and
 							td.cuotas = m.PAGO_CANT_CUOTAS							
 JOIN SSGT.MedioPago tmp on tmp.d_medio_pago= m.PAGO_MEDIO_PAGO
-JOIN SSGT.Venta tv on tv.id_venta = m.VENTA_CODIGO
+JOIN SSGT.Venta tv on tv.codigo_venta = m.venta_codigo
 /*				and tv.id_detalle_venta = (SELECT ID_DETALLE_VENTA FROM SSGT.DetalleVenta tdv WHERE tdv.precio = m.VENTA_DET_PRECIO and
 																										tdv.cantidad = m.VENTA_DET_CANT and
 																										tdv.subtotal = m.VENTA_DET_SUB_TOTAL and
