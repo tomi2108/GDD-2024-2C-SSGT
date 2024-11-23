@@ -332,6 +332,14 @@ BEGIN
 END
 GO
 
+IF OBJECT_ID('SSGT.TipoMedioPago', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_TipoMedioPago') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.TipoMedioPago DROP CONSTRAINT PK_TipoMedioPago;
+    END
+END
+
 -- Verificación y eliminación de tablas si ya existen
 IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL DROP TABLE SSGT.Domicilio;
 IF OBJECT_ID('SSGT.Provincia', 'U') IS NOT NULL DROP TABLE SSGT.Provincia;
@@ -351,6 +359,7 @@ IF OBJECT_ID('SSGT.Envio', 'U') IS NOT NULL DROP TABLE SSGT.Envio;
 IF OBJECT_ID('SSGT.TipoEnvio', 'U') IS NOT NULL DROP TABLE SSGT.TipoEnvio;
 IF OBJECT_ID('SSGT.Pago', 'U') IS NOT NULL DROP TABLE SSGT.Pago;
 IF OBJECT_ID('SSGT.MedioPago', 'U') IS NOT NULL DROP TABLE SSGT.MedioPago;
+IF OBJECT_ID('SSGT.TipoMedioPago', 'U') IS NOT NULL DROP TABLE SSGT.TipoMedioPago;
 IF OBJECT_ID('SSGT.DetalleVenta', 'U') IS NOT NULL DROP TABLE SSGT.DetalleVenta;
 IF OBJECT_ID('SSGT.DetallePago', 'U') IS NOT NULL DROP TABLE SSGT.DetallePago;
 IF OBJECT_ID('SSGT.Factura', 'U') IS NOT NULL DROP TABLE SSGT.Factura;
@@ -523,7 +532,8 @@ CREATE TABLE SSGT.DetallePago (
 
 CREATE TABLE SSGT.MedioPago (
     id_medio_pago INT NOT NULL,
-    d_medio_pago VARCHAR(100)
+    d_medio_pago VARCHAR(50),
+	d_tipo_medio_pago VARCHAR(50)
 );
 
 CREATE TABLE SSGT.DetalleVenta (
@@ -602,8 +612,6 @@ ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_dom
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Vendedor		FOREIGN KEY (id_vendedor) REFERENCES SSGT.Vendedor(id_vendedor);
---ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Cliente		FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
---ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.Factura			ADD CONSTRAINT FK_Factura_DetalleFactura		FOREIGN KEY (id_detalle_factura) REFERENCES SSGT.DetalleFactura(id_detalle_factura);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (id_venta) REFERENCES SSGT.Venta(id_venta);
@@ -617,6 +625,7 @@ ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_ru
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
+
 
 -- Migracion de datos
 --Solo localidades de vendedores (89)
@@ -1089,10 +1098,13 @@ m.VENTA_TOTAL
 
 --Medio de Pago. Cant 5.
 INSERT INTO SSGT.MedioPago
-SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)), PAGO_MEDIO_PAGO
+SELECT ROW_NUMBER() OVER (ORDER BY (SELECT null)),
+PAGO_MEDIO_PAGO,
+PAGO_TIPO_MEDIO_PAGO
 FROM gd_esquema.Maestra
 WHERE PAGO_MEDIO_PAGO IS NOT NULL
-GROUP BY PAGO_MEDIO_PAGO
+GROUP BY PAGO_MEDIO_PAGO,
+		PAGO_TIPO_MEDIO_PAGO
 	HAVING NOT EXISTS (
 	SELECT 1
 	FROM SSGT.MedioPago mp
@@ -1118,8 +1130,6 @@ m.PAGO_IMPORTE
 	FROM ssgt.Pago tp
 	where tp.id_pago= tp.id_pago
 );
-
-SELECT * from SSGT.Venta;
 
 --DetallePago (4244)
 INSERT INTO SSGT.DetallePago
