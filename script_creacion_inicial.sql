@@ -489,6 +489,7 @@ CREATE TABLE SSGT.Publicacion (
 
 CREATE TABLE SSGT.DetalleVenta (
     id_detalle_venta decimal(18,0) IDENTITY (1,1) PRIMARY KEY,
+	codigo_venta decimal(18,0),
 	id_publicacion DECIMAL (18,0) NOT NULL,
     cantidad decimal(18,0),
 	precio decimal(18,2),
@@ -497,7 +498,6 @@ CREATE TABLE SSGT.DetalleVenta (
 
 CREATE TABLE SSGT.Venta (
 	codigo_venta decimal (18,0) PRIMARY KEY,
-	id_detalle_venta decimal(18,0),
     id_cliente decimal(18,0) NOT NULL,
 	f_venta DATE,
     importe_total decimal(18,2)
@@ -603,7 +603,7 @@ ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (codigo_almacen) REFERENCES SSGT.Almacen(codigo_almacen);
 ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
-ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
+ALTER TABLE SSGT.DetalleVenta		ADD CONSTRAINT FK_DetalleVenta_Venta	FOREIGN KEY (codigo_venta) REFERENCES SSGT.Venta(codigo_venta);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
 -- Migracion de datos
@@ -862,35 +862,31 @@ JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
 JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.d_concepto = m.FACTURA_DET_TIPO
 WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
 
---DETALLE DE VENTA (103592) Con Distinct 80080
-INSERT INTO SSGT.DetalleVenta(id_publicacion, cantidad, precio, subtotal)
-SELECT 
-pu.id_publicacion,
-m.VENTA_DET_CANT,
-m.VENTA_DET_PRECIO,
-m.VENTA_DET_SUB_TOTAL
-from gd_esquema.Maestra m
-join SSGT.Publicacion pu on pu.id_publicacion = m.PUBLICACION_CODIGO
-where	m.venta_det_precio is not null and
-		m.PUBLICACION_CODIGO is not null
-
---Venta hay () ROTO
-INSERT INTO SSGT.Venta (codigo_venta, id_cliente, id_detalle_venta, f_venta, importe_total)
+INSERT INTO SSGT.Venta (codigo_venta, id_cliente, f_venta, importe_total)
 SELECT DISTINCT
 m.VENTA_CODIGO,
 c.id_cliente,
-dv.id_detalle_venta,
 m.VENTA_FECHA,
 m.VENTA_TOTAL
 from gd_esquema.Maestra m
 JOIN SSGT.Publicacion p on p.id_publicacion = m.PUBLICACION_CODIGO
-JOIN SSGT.Cliente c on	c.dni = m.CLIENTE_DNI
-JOIN SSGT.DetalleVenta dv on	dv.id_publicacion = p.id_publicacion and
-								dv.cantidad = m.VENTA_DET_CANT and
-								dv.precio = m.VENTA_DET_PRECIO and
-								dv.subtotal = m.VENTA_DET_SUB_TOTAL
-WHERE m.VENTA_CODIGO IS NOT NULL AND
-M.venta_codigo NOT IN (SELECT ve.codigo_venta FROM SSGT.Venta ve);
+JOIN SSGT.Cliente c on	c.dni = m.CLIENTE_DNI and c.apellido = m.CLIENTE_APELLIDO and c.nombre = CLIENTE_NOMBRE
+WHERE m.VENTA_CODIGO IS NOT NULL
+
+
+--DETALLE DE VENTA (103592) Con Distinct 80080
+INSERT INTO SSGT.DetalleVenta(id_publicacion, codigo_venta, cantidad, precio, subtotal)
+SELECT 
+p.id_publicacion,
+v.codigo_venta,
+m.VENTA_DET_CANT,
+m.VENTA_DET_PRECIO,
+m.VENTA_DET_SUB_TOTAL
+from gd_esquema.Maestra m
+join SSGT.Publicacion p on p.id_publicacion = m.PUBLICACION_CODIGO
+JOIN SSGT.VENTA v on m.VENTA_CODIGO = v.codigo_venta
+where	m.venta_det_precio is not null and
+		m.PUBLICACION_CODIGO is not null
 
 --TipoMedioPago (2)
 INSERT INTO SSGT.TipoMedioPago (d_tipo_medio_pago)
