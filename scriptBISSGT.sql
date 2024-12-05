@@ -27,9 +27,6 @@ IF EXISTS ( SELECT name FROM sys.tables WHERE name = 'D_rango_etario')
   DROP TABLE SSGT.D_rango_etario
 GO
 
-IF EXISTS ( SELECT name FROM sys.tables WHERE name = 'D_rango_horario')
-  DROP TABLE SSGT.D_rango_horario
-GO
 
 IF EXISTS ( SELECT name FROM sys.tables WHERE name = 'D_ubicacion')
   DROP TABLE SSGT.D_ubicacion  
@@ -55,13 +52,19 @@ IF EXISTS ( SELECT name FROM sys.tables WHERE name = 'D_Medio_De_Pago')
   DROP TABLE SSGT.D_Medio_De_Pago
 GO
 
+IF EXISTS ( SELECT name FROM sys.tables WHERE name = 'D_Localidad')
+  DROP TABLE SSGT.D_Localidad
+GO
 
+IF EXISTS ( SELECT name FROM sys.tables WHERE name = 'D_Provincia')
+  DROP TABLE SSGT.D_Provincia
+GO
 ---- FUNCIONES y PROCEDURES
 
 
-/*IF EXISTS (SELECT name FROM sys.objects WHERE type_desc = 'SQL_SCALAR_FUNCTION' AND name = 'get_Rango_Etario_Cliente')
+IF EXISTS (SELECT name FROM sys.objects WHERE type_desc = 'SQL_SCALAR_FUNCTION' AND name = 'get_Rango_Etario_Cliente')
 	DROP FUNCTION SSGT.get_Rango_Etario_Cliente 
-GO*/
+GO
 
 -- ELIMINO MIGRACIONES
 IF EXISTS (SELECT name FROM sysobjects WHERE name='migracion_d_medios_de_pago' AND type='p')
@@ -144,16 +147,7 @@ CREATE TABLE SSGT.D_rango_etario (
 	d_rango_etario NVARCHAR(6) NOT NULL,
 )
 GO
-
-
-/*CREATE TABLE SSGT.D_rango_horario(
-	rango_horario_id INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
-	rango_horario_minimo DECIMAL(3,0) NOT NULL ,
-	rango_horario_maximo DECIMAL(3,0) NOT NULL,
-)
-GO*/
-
-
+ 
 
 CREATE TABLE SSGT.D_Marca(
 	id_marca INT PRIMARY KEY NOT NULL,
@@ -196,6 +190,18 @@ CREATE TABLE SSGT.D_Ubicacion (
 )
 GO
 
+CREATE TABLE SSGT.D_Localidad (
+	id_localidad INT PRIMARY KEY NOT NULL,
+	d_localidad NVARCHAR(50) NOT NULL,
+)
+GO
+
+CREATE TABLE SSGT.D_Provincia (
+	id_provincia INT PRIMARY KEY NOT NULL,
+	d_provincia NVARCHAR(50) NOT NULL,
+)
+GO
+
 
 CREATE TABLE SSGT.D_Tipo_Envio (
 	id_tipo_envio INT PRIMARY KEY NOT NULL,
@@ -227,12 +233,12 @@ CREATE TABLE SSGT.H_Venta(
 	id_ubi_almacen INT NOT NULL,
 	id_ubi_cliente INT NOT NULL,
 	id_rango_etario INT NOT NULL,
-	vent_id_medio_pago INT NOT NULL,
+	id_medio_pago INT NOT NULL,
 	ingreso_total DECIMAL(18,2) NOT NULL,
 	cantidad_vendida DECIMAL(18,0) NOT NULL
-	CONSTRAINT fk_id_subrubro
+	CONSTRAINT fk_vent_id_subrubro
 	FOREIGN KEY (id_subrubro) REFERENCES SSGT.D_Sub_rubro (id_subrubro),
-	CONSTRAINT fk_id_tiempo
+	CONSTRAINT fk_vent_id_tiempo
 	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
 	CONSTRAINT id_ubi_almacen 
 	FOREIGN KEY (id_ubi_almacen) REFERENCES SSGT.D_ubicacion (id_ubicacion),
@@ -240,8 +246,8 @@ CREATE TABLE SSGT.H_Venta(
 	FOREIGN KEY (id_ubi_cliente) REFERENCES SSGT.D_ubicacion (id_ubicacion),
 	CONSTRAINT fk_id_rango_etario
 	FOREIGN KEY (id_rango_etario) REFERENCES SSGT.D_rango_etario (id_rango_etario),
-	CONSTRAINT fk_vent_id_medio_pago 
-	FOREIGN KEY (vent_id_medio_pago ) REFERENCES SSGT.D_Medio_De_Pago (id_medio_pago),
+	CONSTRAINT fk_id_medio_pago 
+	FOREIGN KEY (id_medio_pago ) REFERENCES SSGT.D_Medio_De_Pago (id_medio_pago),
 )
 GO
 
@@ -255,11 +261,11 @@ CREATE TABLE SSGT.H_Envio (
 	cant_cumplidos DECIMAL(18,0),
 	total_envios DECIMAL(18,0) NOT NULL,
 	costo_envio DECIMAL(18,2) NOT NULL,
-	CONSTRAINT id_ubi_cliente 
+	CONSTRAINT env_id_ubi_cliente 
 	FOREIGN KEY (id_ubi_cliente) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT id_ubi_almacen 
+	CONSTRAINT env_id_ubi_almacen 
 	FOREIGN KEY (id_ubi_almacen) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT fk_id_tiempo
+	CONSTRAINT fk_env_id_tiempo
 	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
 	CONSTRAINT fk_id_tipo_envio
 	FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.D_Tipo_Envio (id_tipo_envio),
@@ -274,7 +280,7 @@ CREATE TABLE SSGT.H_Facturacion (
 	cant_concepto_fact DECIMAL(18,2),
 	CONSTRAINT fk_fact_env_id_ubicacion
 	FOREIGN KEY (id_ubi_vendedor) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT fk_id_tiempo
+	CONSTRAINT fk_fact_id_tiempo
 	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
 )
 GO
@@ -314,8 +320,6 @@ GO
 
 ----------------- MIGRACIONES --------
 
------------------ Procedure MARCA (D) --------
-
 
 CREATE PROCEDURE SSGT.migracion_d_Marca
 AS
@@ -340,30 +344,33 @@ GO
 CREATE PROCEDURE SSGT.migracion_d_medios_de_pago
 AS
 INSERT INTO SSGT.D_Medio_De_Pago (
-	D_Medio_De_Pago.d_medio_pago,
-	D_Medio_De_Pago.cant_cuotas,
-    D_Medio_De_Pago.d_tipo_medio_pago
+	d_medio_pago,
+	cant_cuotas,
+    d_tipo_medio_pago
 )
 --dejo el distinct??
-SELECT distinct SSGT.MedioPago.d_medio_pago,  SSGT.DetallePago.cuotas
-	FROM SSGT.MedioPago
-	JOIN SSGT.DetallePago
-		ON SSGT.MedioPago.id_medio_pago = SSGT.DetallePago.id_detalle_pago
+SELECT distinct mp.d_medio_pago,  det.cuotas, tmp.d_tipo_medio_pago
+	FROM SSGT.MedioPago mp
+	join SSGT.Pago p on p.id_medio_pago = mp.id_medio_pago 
+	JOIN SSGT.DetallePago det
+		ON det.id_detalle_pago = p.id_detalle_pago
+	join SSGT.tipoMedioPago tmp on tmp.id_tipo_medio_pago = mp.id_tipo_medio_pago  
+	
 GO
 
 
-
---aca puedo crear una secuencia para la PK
 CREATE PROC	SSGT.migracion_d_ubicacion
 AS
-INSERT INTO SSGT.D_Ubicacion(id_provincia,id_localidad)
+INSERT INTO SSGT.D_Ubicacion(id_ubicacion, id_provincia,id_localidad)
 	select 	
-			id_localidad,
-			id_provincia
-	from SSGT.Localidad join SSGT.Provincia on id_provincia = loc_prov_id --se jonea bien con provinicia??? NO
+			d.id_domicilio,
+			l.id_localidad, --ponemos los nombres en vez del id??
+			p.id_provincia
+	from domicilio d
+	join SSGT.Localidad l on d.id_localidad = l.id_localidad
+	join SSGT.Provincia p on p.id_provincia = l.id_provincia
 GO
 
---HACE FALTA HACER LA DE PROVINCIA Y LOCALIDAD PARA OBTENER SUS NOMBRES????
 
 
 CREATE PROC SSGT.migracion_d_tipo_envio
@@ -377,7 +384,8 @@ GO
 CREATE PROC SSGT.migracion_d_Sub_rubro
 AS
 INSERT INTO SSGT.D_Sub_rubro(id_subrubro,d_subrubro,d_rubro)
-	select id_subrubro,d_subrubro,rub_detalle from SSGT.Subrubro join SSGT.Rubro on SSGT.Rubro.id_rubro = SSGT.Subrubro.id_rubro
+	select id_subrubro,d_subrubro,r.d_rubro from SSGT.Subrubro s
+	join SSGT.Rubro r on r.id_rubro = s.id_rubro
 GO
 
 
@@ -394,17 +402,15 @@ GO
 
 
 
-
 CREATE PROC SSGT.migracion_d_tiempo
 AS
 INSERT INTO SSGT.D_Tiempo(anio,mes,cuatrimestre)
 	select distinct YEAR(fecha),MONTH(fecha),DATEPART(QUARTER,fecha) 
 	from SSGT.Factura
 	union
-    --faltaria la fecha de la venta en SQL
-	/*select distinct YEAR(vent_fecha_hora),MONTH(vent_fecha_hora),DATEPART(QUARTER,vent_fecha_hora) 
+	select distinct YEAR(f_venta),MONTH(f_venta),DATEPART(QUARTER,f_venta) 
 	from SSGT.Venta
-	union*/
+	union
 	select distinct YEAR(fecha_inicio),MONTH(fecha_inicio),DATEPART(QUARTER,fecha_inicio) 
 	from SSGT.Publicacion
 	union
@@ -412,7 +418,7 @@ INSERT INTO SSGT.D_Tiempo(anio,mes,cuatrimestre)
 	from SSGT.Publicacion
 	union
 	select distinct YEAR(f_pago),MONTH(f_pago),DATEPART(QUARTER,f_pago) 
-	from SSGT.DetallePago
+	from SSGT.Pago
 	union
 	select distinct YEAR(f_programada),MONTH(f_programada),DATEPART(QUARTER,f_programada) 
 	from SSGT.Envio
@@ -432,35 +438,35 @@ INSERT INTO SSGT.H_venta(	id_subrubro,
 								id_rango_etario ,
 								ingreso_total,
 								cantidad_vendida,
-								vent_id_medio_pago
+								id_medio_pago
 								) --falta el promedio mensual?
 SELECT  sr.id_subrubro,
 		ti.id_tiempo,
 		ubi_almacen.id_ubicacion,
 		ubi_c.id_ubicacion,
 		re.id_rango_etario,
-		sum(v.ingreso_total),
+		sum(v.importe_total),
 		count(*) AS CantVentas,
 		bmdp.id_medio_pago
 from SSGT.Venta v
-join SSGT.DetalleVenta dv on dv.id_detalle_venta = v.id_venta
+join SSGT.DetalleVenta dv on dv.codigo_venta = v.codigo_venta
 join SSGT.Publicacion pu on pu.id_publicacion = dv.id_publicacion
 join SSGT.Producto pr on pr.id_producto = pu.id_producto
 join SSGT.D_Sub_rubro sr on sr.id_subrubro = pr.id_subrubro
 --aca me falta la fecha de la venta
-join SSGT.D_Tiempo ti on ti.anio = year(v.vent_fecha_hora) and MONTH(v.vent_fecha_hora) = ti.mes
-join SSGT.Almacen al on al.id_almacen = pu.id_almacen
+join SSGT.D_Tiempo ti on ti.anio = year(v.f_venta) and MONTH(v.f_venta) = ti.mes
+join SSGT.Almacen al on al.codigo_almacen = pu.codigo_almacen
 join SSGT.Domicilio do on do.id_domicilio = al.id_domicilio 
 join SSGT.D_Ubicacion ubi_almacen on ubi_almacen.id_ubicacion = do.id_domicilio --esto nose si esta bien
 join SSGT.Usuario us on us.id_usuario = v.id_cliente
 join SSGT.Cliente c on c.id_usuario = us.id_usuario
 join SSGT.D_rango_etario re on re.d_rango_etario = SSGT.get_Rango_Etario_Cliente(c.f_nacimiento)
-join SSGT.Pago p on p.id_venta = v.id_venta
-join SSGT.DetallePago dp on dp.id_pago = p.id_pago
+join SSGT.Pago p on p.codigo_venta = v.codigo_venta
+join SSGT.DetallePago dp on dp.id_detalle_pago = p.id_detalle_pago
 join SSGT.MedioPago mdp on mdp.id_medio_pago = dp.id_detalle_pago
 join SSGT.D_Medio_De_Pago bmdp on bmdp.cant_cuotas = dp.cuotas and bmdp.d_medio_pago = mdp.d_medio_pago
-join SSGT.Envio e on e.id_venta = v.id_venta and e.id_domicilio = c.id_domicilio
-join SSGT.Domicilio domU on domU.id_domicilio = c.id_domicilio
+join SSGT.Envio e on e.codigo_venta = v.codigo_venta --and e.id_domicilio = c.id_domicilio
+join SSGT.Domicilio domU on domU.id_usuario = us.id_usuario and e.id_domicilio = domU.id_domicilio
 join SSGT.D_Ubicacion ubi_c on ubi_c.id_ubicacion = domU.id_domicilio
 group by	sr.id_subrubro,
 			ti.id_tiempo,
@@ -476,17 +482,17 @@ GO
 CREATE PROC SSGT.migracion_h_publicacion
 AS
 INSERT INTO SSGT.H_Publicacion(id_marca,id_subrubro,id_tiempo,promedio_stock_inicial,promedio_tiempo_vigente,promedio_cant_publicaciones)
-	select distinct id_marca,id_subrubro,t1.id_tiempo, --joinear con marca y subrrubro
+	select distinct prod.id_marca,prod.id_subrubro,t1.id_tiempo, --joinear con marca y subrrubro
 		sum(p.d_stock) + sum(isnull(det.cantidad,0)), 
 		avg(DATEDIFF(DAY, p.fecha_inicio, p.fecha_fin)),
 		count(*)
 	from SSGT.Publicacion p
-	join SSGT.DetalleVenta det on id_publicacion = det.id_publicacion
+	join SSGT.DetalleVenta det on p.id_publicacion = det.id_publicacion
 	join SSGT.Producto prod on p.id_producto = prod.id_producto
-	join SSGT.D_Marca on prod.id_marca = id_marca
-	join SSGT.D_Sub_rubro on prod.id_subrubro = id_subrubro
+	join SSGT.D_Marca d_marca on d_marca.id_marca = prod.id_marca
+	join SSGT.D_Sub_rubro d_sub on d_sub.id_subrubro = prod.id_subrubro
 	join SSGT.D_Tiempo t1 on YEAR(p.fecha_inicio) = t1.anio and MONTH(p.fecha_inicio) = t1.mes
-	group by id_marca,id_subrubro,id_tiempo
+	group by prod.id_marca,prod.id_subrubro,id_tiempo
 GO
 
 
@@ -497,12 +503,13 @@ AS
 	sum(det.precio),
 	sum(f.importe_total)
 	from SSGT.Factura f
-	join SSGT.DetalleFactura det on det.id_factura = f.id_factura
+	join SSGT.DetalleFactura det on det.factura_numero = f.factura_numero and 
+	det.id_concepto_factura = f.id_concepto_factura
 	join SSGT.D_Tiempo on YEAR(f.fecha) = anio and MONTH(f.fecha) = mes
     --join SSGT.UsuDom on usu_id = usu_dom_usu_id 
-    join SSGT.Vendedor v on id_vendedor = f.id_vendedor --uso VENDEDOR COMO USUDOM
-	join SSGT.Usuario on v.id_vendedor = id_usuario
-	join SSGT.Domicilio d on id_usuario = d.id_usuario 
+    join SSGT.Vendedor v on v.id_vendedor = f.id_vendedor --uso VENDEDOR COMO USUDOM
+	join SSGT.Usuario us  on v.id_usuario = us.id_usuario
+	join SSGT.Domicilio d on us.id_usuario = d.id_usuario 
 	join SSGT.D_Ubicacion on d.id_localidad = id_ubicacion
 	group by id_ubicacion,id_tiempo
 GO
@@ -513,25 +520,26 @@ GO
 CREATE PROC SSGT.migracion_h_envio
 AS
 	INSERT INTO SSGT.H_Envio(id_tiempo,id_ubi_cliente,id_ubi_almacen,id_tipo_envio,costo_envio,total_envios,cant_cumplidos)
-	select id_tiempo,ubi_c.id_ubicacion,ubi_a.id_ubicacion,id_tipo_envio,sum(costo_envio),count(*),
+	select id_tiempo,/*ubi cliente*/ubi.id_ubicacion,ubi_a.id_ubicacion,e.id_tipo_envio,sum(e.costo),count(*),
 		SUM(CASE 
             WHEN DATEDIFF(DAY, f_programada, f_entrega) = 0 THEN 1
             ELSE 0 
         END)
 	from SSGT.Envio e
-	join SSGT.D_Tipo_Envio on id_tipo_envio = e.id_envio
+	join SSGT.D_Tipo_Envio d_tipo on d_tipo.id_tipo_envio = e.id_envio
 	join SSGT.D_Tiempo on anio = YEAR(e.f_programada) and MONTH(e.f_programada) = mes
 	--join SSGT.UsuDom on env_usu_dom_envio = usu_dom_id
 	join SSGT.Domicilio dom on e.id_domicilio = dom.id_domicilio
 	join SSGT.D_Ubicacion ubi on ubi.id_ubicacion = dom.id_domicilio
 	join SSGT.Venta v on e.codigo_venta = v.codigo_venta
-	join SSGT.DetalleVenta det on id_venta = v.codigo_venta
+	join SSGT.DetalleVenta det on det.codigo_venta = v.codigo_venta
 	join SSGT.Publicacion p on det.id_publicacion = p.id_publicacion
-	join SSGT.Almacen a on codigo_almacen = p.codigo_almacen
+	join SSGT.Almacen a on a.codigo_almacen = p.codigo_almacen
 	join SSGT.Domicilio dom_a on dom_a.id_domicilio = a.id_domicilio
 	join SSGT.D_Ubicacion ubi_a on ubi_a.id_ubicacion = dom_a.id_domicilio
-	group by id_tiempo,ubi_c.id_ubicacion,ubi_a.id_ubicacion,id_tipo_envio
+	group by id_tiempo,ubi.id_ubicacion,ubi_a.id_ubicacion,e.id_tipo_envio
 GO
+
 
 --EJECUTO
 
@@ -556,9 +564,9 @@ GO
 CREATE VIEW SSGT.v_promedio_tiempo_publicaciones
 AS
 	select anio,cuatrimestre,d_subrubro,avg(promedio_tiempo_vigente) as promedio_dias_vigente
-	from SSGT.H_Publicacion
-	join SSGT.D_Sub_rubro on id_subrubro = id_subrubro
-	join SSGT.D_Tiempo on id_tiempo = id_tiempo
+	from SSGT.H_Publicacion h_publi
+	join SSGT.D_Sub_rubro d_sub on h_publi.id_subrubro = d_sub.id_subrubro
+	join SSGT.D_Tiempo d_tiempo on d_tiempo.id_tiempo = h_publi.id_tiempo
 	group by d_subrubro,anio,cuatrimestre
 GO
 
@@ -567,9 +575,9 @@ GO
 CREATE VIEW SSGT.v_promedio_stock_inicial
 AS
 	select anio,d_marca,sum(promedio_stock_inicial)/sum(promedio_cant_publicaciones) as promedio_stock_inicial
-	from SSGT.H_Publicacion
-	join SSGT.D_Marca on id_marca = id_marca
-	join SSGT.D_Tiempo on id_tiempo = id_tiempo
+	from SSGT.H_Publicacion h_publi
+	join SSGT.D_Marca d_marca on h_publi.id_marca = d_marca.id_marca
+	join SSGT.D_Tiempo d_tiempo on d_tiempo.id_tiempo = h_publi.id_tiempo
 	group by anio,d_marca
 GO
 
@@ -632,13 +640,13 @@ SELECT ti.anio,
 FROM SSGT.H_Venta v
 join SSGT.D_Tiempo ti on ti.id_tiempo = v.id_tiempo
 join SSGT.D_Ubicacion ubi on ubi.id_ubicacion = v.id_ubi_cliente
-join SSGT.D_Medio_De_Pago mdp on mdp.id_medio_pago = v.vent_id_medio_pago
+join SSGT.D_Medio_De_Pago mdp on mdp.id_medio_pago = v.id_medio_pago
 WHERE cant_cuotas > 1 and
 	ubi.id_ubicacion in (select top 3 ubi2.id_ubicacion
 					from SSGT.H_Venta v2
 					join SSGT.D_Ubicacion ubi2 on ubi2.id_ubicacion = v2.id_ubi_cliente
 					where ti.id_tiempo = v2.id_tiempo and
-					vent_id_medio_pago = id_medio_pago
+					id_medio_pago = id_medio_pago
 					group by ubi2.id_ubicacion
 					order by sum(ingreso_total))
 group by	ti.anio,
@@ -653,8 +661,8 @@ GO
 CREATE VIEW SSGT.v_porcentaje_cumplimientos_envios
 AS
 	select id_provincia,anio,mes,(sum(isnull(cant_cumplidos,0))/sum(isnull(total_envios,0))) as porcentaje_cumplimientos_envios
-	from SSGT.H_Envio
-	join SSGT.D_Tiempo on id_tiempo = id_tiempo
+	from SSGT.H_Envio h_envio
+	join SSGT.D_Tiempo d_tiempo on h_envio.id_tiempo = d_tiempo.id_tiempo
 	join SSGT.D_Ubicacion on id_ubi_almacen = id_ubicacion
 	group by id_provincia,anio,mes
 GO
@@ -675,8 +683,8 @@ GO
 CREATE VIEW SSGT.v_porcentaje_facturacion_concepto
 AS
 	select anio,mes,(sum(cant_concepto_fact)/sum(cantidad_facturada))*100 as porcentaje_concepto
-	from SSGT.H_Facturacion
-	join SSGT.D_Tiempo on id_tiempo = id_tiempo
+	from SSGT.H_Facturacion h_fact
+	join SSGT.D_Tiempo d_tiempo on h_fact.id_tiempo = d_tiempo.id_tiempo
 	group by anio,mes
 GO
 
@@ -685,7 +693,9 @@ GO
 CREATE VIEW SSGT.v_facturacion_provincia
 AS
 	select anio,cuatrimestre,id_provincia,cantidad_facturada
-	from SSGT.H_Facturacion
-	join SSGT.D_Tiempo on id_tiempo = id_tiempo
+	from SSGT.H_Facturacion h_fact
+	join SSGT.D_Tiempo d_tiempo on h_fact.id_tiempo = d_tiempo.id_tiempo
 	join SSGT.D_Ubicacion on id_ubicacion = id_ubi_vendedor
 GO
+
+/**/
