@@ -569,24 +569,29 @@ CREATE TABLE SSGT.DetallePago(
 CREATE TABLE SSGT.DetalleFactura (
     id_detalle_factura decimal(18,0) IDENTITY (1,1) PRIMARY KEY,
 	factura_numero decimal(18,0) NOT NULL,
+	id_concepto_factura decimal(18,0) NOT NULL,
     id_publicacion Decimal(18,0) NOT NULL,
-    id_concepto_factura decimal(18,0) NOT NULL,
+    --id_concepto_factura decimal(18,0) NOT NULL,
     precio FLOAT,
     cantidad INT,
     subtotal FLOAT
-);
-
-CREATE TABLE SSGT.Factura (
-    factura_numero DECIMAL(18,0) PRIMARY KEY,
-    id_vendedor decimal(18,0) NOT NULL,
-    fecha DATE,
-    importe_total decimal(18,2)
 );
 
 CREATE TABLE SSGT.Concepto_Det_Factura (
     id_concepto_factura decimal(18,0) IDENTITY (1,1) PRIMARY KEY,
     d_concepto NVARCHAR(50)
 );
+
+CREATE TABLE SSGT.Factura (
+    factura_numero DECIMAL(18,0) NOT NULL,
+    id_concepto_factura DECIMAL(18,0) NOT NULL,
+    id_vendedor DECIMAL(18,0) NOT NULL,
+    fecha DATE,
+    importe_total DECIMAL(18,2),
+    CONSTRAINT PK_Factura PRIMARY KEY (factura_numero, id_concepto_factura)
+);
+
+
 
 
 -- Creación de FOREIGN KEY constraints
@@ -595,8 +600,7 @@ ALTER TABLE SSGT.Cliente			ADD CONSTRAINT FK_Cliente_Usuario		FOREIGN KEY (id_us
 ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Localidad	FOREIGN KEY (id_localidad) REFERENCES SSGT.Localidad(id_localidad);
 ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Usuario	FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
-ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Concepto_Det_Factura FOREIGN KEY (id_concepto_factura) REFERENCES SSGT.Concepto_Det_Factura(id_concepto_factura);
-ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (factura_numero) REFERENCES SSGT.Factura(factura_numero);
+ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (factura_numero, id_concepto_factura) REFERENCES SSGT.Factura (factura_numero, id_concepto_factura);
 ALTER TABLE SSGT.DetalleVenta		ADD CONSTRAINT FK_DetalleVenta_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.DetalleVenta		ADD CONSTRAINT FK_DetalleVenta_Venta	FOREIGN KEY (codigo_venta) REFERENCES SSGT.Venta(codigo_venta);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
@@ -617,7 +621,6 @@ ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY 
 ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
-
 -- Migracion de datos
 --PROVINCIAS (23)
 INSERT INTO SSGT.Provincia (d_provincia)
@@ -973,6 +976,411 @@ m.FACTURA_TOTAL
 from gd_esquema.Maestra m
 JOIN SSGT.Publicacion p on p.id_publicacion = m.PUBLICACION_CODIGO
 JOIN SSGT.Vendedor v on v.id_vendedor = p.id_vendedor
+WHERE m.FACTURA_NUMERO IS NOT NULL
+AND NOT EXISTS(SELECT f.factura_numero from SSGT.Factura f
+				where f.factura_numero = m.FACTURA_NUMERO)
+
+--Detalle Factura (103387)
+INSERT INTO SSGT.DetalleFactura
+SELECT DISTINCT
+	f.factura_numero,
+	tp.id_publicacion,
+    tcdf.id_concepto_factura,
+    m.FACTURA_DET_PRECIO,
+    m.FACTURA_DET_CANTIDAD,
+    m.FACTURA_DET_SUBTOTAL
+FROM gd_esquema.Maestra m
+JOIN SSGT.Factura f on f.factura_numero = m.FACTURA_NUMERO
+JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
+JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.d_concepto = m.FACTURA_DET_TIPO
+WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
+
+--Tipo de Envio (3)
+INSERT INTO SSGT.TipoEnvio (d_tipo_envio)
+SELECT distinct ENVIO_TIPO
+FROM gd_esquema.Maestra m
+WHERE m.ENVIO_TIPO IS NOT NULL
+AND NOT EXISTS(	SELECT te.d_tipo_envio FROM SSGT.TipoEnvio te
+				where te.d_tipo_envio = m.ENVIO_TIPO)
+--ENVIO	(102093)
+INSERT INTO SSGT.Envio(codigo_venta, id_domicilio, id_tipo_envio, f_programada, hora_inicial, hora_final, f_entrega, costo)
+SELECT DISTINCT
+	tv.codigo_venta,
+	td.id_domicilio,
+	te.id_tipo_envio, 
+	m.ENVIO_FECHA_PROGAMADA,
+	m.ENVIO_HORA_INICIO,
+	m.ENVIO_HORA_FIN_INICIO,
+	m.ENVIO_FECHA_ENTREGA,
+	m.ENVIO_COSTO
+from gd_esquema.Maestra m
+JOIN SSGT.TipoEnvio te on te.d_tipo_envio = m.ENVIO_TIPO
+JOIN SSGT.Domicilio td on td.d_calle= m.CLI_USUARIO_DOMICILIO_CALLE and
+						td.d_altura= m.CLI_USUARIO_DOMICILIO_NRO_CALLE and
+						td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO and
+						td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO and
+						td.id_localidad = (SELECT TOP 1 l.id_localidad From SSGT.Localidad l where	l.d_localidad = m.CLI_USUARIO_DOMICILIO_LOCALIDAD and
+																									l.id_provincia = (SELECT TOP 1 p.id_provincia From SSGT.Provincia p where p.d_provincia = m.CLI_USUARIO_DOMICILIO_PROVINCIA))
+JOIN SSGT.Venta tv on tv.codigo_venta = m.VENTA_CODIGO
+WHERE m.ENVIO_FECHA_PROGAMADA is not null
+
+-- Migracion de datos
+--PROVINCIAS (23)
+INSERT INTO SSGT.Provincia (d_provincia)
+SELECT distinct
+m.VEN_USUARIO_DOMICILIO_PROVINCIA
+from gd_esquema.Maestra m
+WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL AND
+VEN_USUARIO_DOMICILIO_PROVINCIA NOT IN (SELECT p.d_provincia FROM SSGT.Provincia p);
+--(1)
+INSERT INTO SSGT.Provincia (d_provincia)
+SELECT distinct
+m.CLI_USUARIO_DOMICILIO_PROVINCIA
+from gd_esquema.Maestra m
+WHERE m.CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL and
+m.CLI_USUARIO_DOMICILIO_PROVINCIA NOT IN (SELECT p.d_provincia FROM SSGT.Provincia p);
+--(0)
+INSERT INTO SSGT.Provincia (d_provincia)
+SELECT distinct
+m.ALMACEN_PROVINCIA
+from gd_esquema.Maestra m
+WHERE m.ALMACEN_PROVINCIA IS NOT NULL and
+m.ALMACEN_PROVINCIA NOT IN (SELECT p.d_provincia FROM SSGT.Provincia p);
+
+--LOCALIDADES(68)
+INSERT INTO SSGT.Localidad (id_provincia, d_localidad)
+SELECT distinct
+p.id_provincia,
+m.ALMACEN_Localidad
+from gd_esquema.Maestra m
+JOIN SSGT.Provincia p on p.d_provincia = m.ALMACEN_PROVINCIA
+WHERE NOT EXISTS(	Select l.d_localidad from SSGT.Localidad l
+					JOIN SSGT.Provincia p on p.id_provincia = l.id_provincia
+					WHERE l.d_localidad = m.ALMACEN_Localidad AND
+					m.ALMACEN_Localidad is not null);
+--LOCALIDADES (89)
+INSERT INTO SSGT.Localidad (id_provincia, d_localidad)
+SELECT distinct
+p.id_provincia,
+VEN_USUARIO_DOMICILIO_LOCALIDAD
+from gd_esquema.Maestra m
+JOIN SSGT.Provincia p on p.d_provincia = m.VEN_USUARIO_DOMICILIO_PROVINCIA 
+WHERE not exists(	Select l.d_localidad from SSGT.Localidad l
+					JOIN SSGT.Provincia p on p.id_provincia = l.id_provincia
+					WHERE l.d_localidad = m.VEN_USUARIO_DOMICILIO_LOCALIDAD AND
+					m.ALMACEN_Localidad is not null)
+
+
+--LOCALIDADES (16575)
+INSERT INTO SSGT.Localidad (id_provincia, d_localidad)
+SELECT distinct
+p.id_provincia,
+CLI_USUARIO_DOMICILIO_LOCALIDAD
+from gd_esquema.Maestra m
+JOIN SSGT.Provincia p on p.d_provincia = m.CLI_USUARIO_DOMICILIO_PROVINCIA 
+WHERE NOT EXISTS(	Select l.d_localidad from SSGT.Localidad l
+					JOIN SSGT.Provincia p on p.id_provincia = l.id_provincia
+					WHERE l.d_localidad = m.CLI_USUARIO_DOMICILIO_LOCALIDAD and
+					m.CLI_USUARIO_DOMICILIO_LOCALIDAD is not null);
+
+-- Usuario Clientes: 41298
+INSERT INTO SSGT.Usuario (d_email, d_password, d_fecha_alta)
+SELECT DISTINCT
+CLIENTE_MAIL,
+CLI_USUARIO_PASS,
+CLI_USUARIO_FECHA_CREACION
+from gd_esquema.Maestra m
+WHERE cliente_mail is not null and
+NOT EXISTS(	SELECT u.d_email FROM SSGT.Usuario u					
+					where u.d_email = cliente_mail and
+					u.d_password = CLI_USUARIO_PASS and
+					u.d_fecha_alta = CLI_USUARIO_FECHA_CREACION);
+--Usuarios Vendedores: 89
+INSERT INTO SSGT.Usuario (d_email, d_password, d_fecha_alta)
+SELECT DISTINCT
+    VENDEDOR_MAIL AS email,
+    VEN_USUARIO_PASS AS password,
+    VEN_USUARIO_FECHA_CREACION AS fecha_creacion
+FROM gd_esquema.Maestra m
+WHERE vendedor_mail is not null and
+NOT EXISTS(	SELECT  u.d_email FROM SSGT.Usuario u					
+			where u.d_email = VENDEDOR_MAIL and
+			u.d_password = VEN_USUARIO_PASS and
+			u.d_fecha_alta = VEN_USUARIO_FECHA_CREACION);
+
+
+-- Solo domicilios de clientes (40675)
+INSERT INTO SSGT.Domicilio (id_localidad, d_calle, d_altura, d_piso, d_depto, d_codigo_postal, id_usuario)
+SELECT distinct
+tl.id_localidad,
+CLI_USUARIO_DOMICILIO_CALLE,
+CLI_USUARIO_DOMICILIO_NRO_CALLE,
+CLI_USUARIO_DOMICILIO_PISO,
+CLI_USUARIO_DOMICILIO_DEPTO,
+CLI_USUARIO_DOMICILIO_CP,
+u.id_usuario
+from gd_esquema.Maestra m
+JOIN SSGT.Localidad tl on	tl.d_localidad = m.cli_usuario_domicilio_localidad and
+							tl.id_provincia = (SELECT p.id_provincia FROM SSGT.Provincia p where p.d_provincia = m.CLI_USUARIO_DOMICILIO_PROVINCIA)	
+JOIN SSGT.Usuario u on u.d_email = m.CLIENTE_MAIL and
+						u.d_fecha_alta = m.CLI_USUARIO_FECHA_CREACION and
+						U.d_password = M.CLI_USUARIO_PASS
+WHERE CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL
+--(68)
+INSERT INTO SSGT.Domicilio (id_localidad, d_calle, d_altura)
+SELECT DISTINCT       
+    l.id_localidad as id_localidad,          
+    m.ALMACEN_CALLE as d_calle,
+    m.ALMACEN_NRO_CALLE as n_calle
+FROM gd_esquema.Maestra m
+JOIN SSGT.Localidad l ON	l.d_localidad = m.ALMACEN_LOCALIDAD and
+							l.id_provincia = (SELECT p.id_provincia FROM SSGT.Provincia p where p.d_provincia = ALMACEN_PROVINCIA)
+WHERE M.ALMACEN_CALLE IS NOT NULL and
+not exists(	SELECT d.d_calle FROM SSGT.Domicilio d
+			WHERE d.d_calle = m.ALMACEN_CALLE and
+			d.d_altura = m.ALMACEN_NRO_CALLE)
+--(89)
+INSERT INTO SSGT.Domicilio (id_localidad, d_calle, d_altura, d_piso, d_depto, d_codigo_postal, id_usuario)
+SELECT distinct
+tl.id_localidad,
+m.VEN_USUARIO_DOMICILIO_CALLE,
+m.VEN_USUARIO_DOMICILIO_NRO_CALLE,
+m.VEN_USUARIO_DOMICILIO_PISO,
+m.VEN_USUARIO_DOMICILIO_DEPTO,
+m.VEN_USUARIO_DOMICILIO_CP,
+u.id_usuario
+from gd_esquema.Maestra m
+JOIN SSGT.Localidad tl on	tl.d_localidad = m.ven_usuario_domicilio_localidad and
+							tl.id_provincia = (SELECT p.id_provincia FROM SSGT.Provincia p where p.d_provincia = m.VEN_USUARIO_DOMICILIO_PROVINCIA)
+JOIN SSGT.Usuario u on	u.d_email = m.VENDEDOR_MAIL
+WHERE VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL and
+NOT EXISTS(	SELECT d.d_calle FROM SSGT.Domicilio d
+			WHERE d.d_calle = m.VEN_USUARIO_DOMICILIO_CALLE and
+			d.d_altura = m.VEN_USUARIO_DOMICILIO_NRO_CALLE AND
+			d.d_codigo_postal = m.VEN_USUARIO_DOMICILIO_CP and
+			d.d_piso = m.VEN_USUARIO_DOMICILIO_PISO and
+			d.d_depto = m.VEN_USUARIO_DOMICILIO_DEPTO)
+
+--Migra los clientes. Cant: 41298
+INSERT INTO SSGT.Cliente
+SELECT DISTINCT
+tu.id_usuario,
+CLIENTE_NOMBRE,
+CLIENTE_APELLIDO,
+CLIENTE_DNI,
+CLIENTE_FECHA_NAC
+FROM gd_esquema.Maestra m
+JOIN SSGT.Usuario tu	on tu.d_email = m.CLIENTE_MAIL and
+							tu.d_fecha_alta = CLI_USUARIO_FECHA_CREACION
+WHERE CLIENTE_DNI IS NOT NULL
+AND NOT EXISTS(	SELECT c.dni FROM SSGT.Cliente c
+				where c.dni = m.CLIENTE_DNI)
+--Migra Vendedores. Cant: 89
+INSERT INTO SSGT.Vendedor
+SELECT DISTINCT
+tu.id_usuario,
+VENDEDOR_RAZON_SOCIAL,
+VENDEDOR_CUIT
+FROM gd_esquema.Maestra m
+JOIN SSGT.Usuario tu on tu.d_email = m.VENDEDOR_MAIL
+WHERE VENDEDOR_CUIT IS NOT NULL
+AND NOT EXISTS(	SELECT v.d_cuit FROM SSGT.Vendedor v
+				where v.d_cuit = m.VENDEDOR_CUIT)
+
+--Migración Almacén (68).
+insert into SSGT.Almacen (codigo_almacen, id_domicilio, costo_dia)
+select distinct
+	M.ALMACEN_CODIGO,
+    d.id_domicilio,
+	m.ALMACEN_COSTO_DIA_AL as costo_dia
+from gd_esquema.Maestra m
+JOIN SSGT.Domicilio d ON d.d_calle		= m.ALMACEN_CALLE AND 
+						d.d_altura		= m.ALMACEN_NRO_CALLE
+where m.ALMACEN_CODIGO is not null
+AND NOT EXISTS(	SELECT a.codigo_almacen FROM SSGT.Almacen a
+				where a.codigo_almacen = m.ALMACEN_CODIGO)
+
+--MARCA (4)
+insert into SSGT.Marca (d_marca)
+select DISTINCT 
+	m.PRODUCTO_MARCA as d_marca
+from gd_esquema.Maestra m
+where m.PRODUCTO_MARCA is not null
+AND NOT EXISTS(	SELECT * FROM SSGT.Marca ma
+				where ma.d_marca = m.PRODUCTO_MARCA)
+
+--MODELO (7)
+insert into SSGT.Modelo (id_modelo, d_modelo)
+select DISTINCT 
+    m.PRODUCTO_MOD_CODIGO AS id_modelo,
+	m.PRODUCTO_MOD_DESCRIPCION as d_modelo
+from gd_esquema.Maestra m
+where m.PRODUCTO_MOD_CODIGO is not null
+AND NOT EXISTS(	SELECT mo.id_modelo FROM SSGT.Modelo mo
+				where mo.id_modelo = m.PRODUCTO_MOD_CODIGO)
+
+--RUBRO (22)
+insert into SSGT.Rubro (d_rubro)
+select DISTINCT 
+	m.PRODUCTO_RUBRO_DESCRIPCION as d_rubro	
+from gd_esquema.Maestra m
+where m.PRODUCTO_RUBRO_DESCRIPCION is not null
+AND NOT EXISTS(	SELECT * FROM SSGT.Rubro r
+				where r.d_rubro= m.PRODUCTO_RUBRO_DESCRIPCION)
+
+  --Subrubro (815)
+insert into SSGT.Subrubro (id_rubro, d_subrubro)
+select DISTINCT 
+ 	r.id_rubro,
+	m.PRODUCTO_SUB_RUBRO as d_subrubro
+from gd_esquema.Maestra m
+JOIN SSGT.Rubro r on r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION
+	where m.PRODUCTO_SUB_RUBRO is not null
+
+--Producto. (6893)
+INSERT INTO SSGT.PRODUCTO (id_subrubro, id_marca, id_modelo, codigo_producto, d_descripcion, precio)
+	SELECT DISTINCT  
+		sub.id_subrubro, 
+		ma.id_marca, 
+		mo.id_modelo, 
+		m.PRODUCTO_CODIGO,
+		m.PRODUCTO_DESCRIPCION, 
+		m.PRODUCTO_PRECIO
+	FROM gd_esquema.Maestra m
+	JOIN SSGT.Subrubro sub ON sub.d_subrubro = m.PRODUCTO_SUB_RUBRO and sub.id_rubro = (SELECT r.id_rubro FROM SSGT.Rubro r WHERE r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)
+	JOIN SSGT.Marca ma ON ma.d_marca = m.PRODUCTO_MARCA
+	JOIN SSGT.Modelo mo ON mo.id_modelo = m.PRODUCTO_MOD_CODIGO
+	WHERE m.PRODUCTO_CODIGO IS NOT NULL;
+
+--Publicacion (34629)
+INSERT INTO SSGT.Publicacion
+SELECT DISTINCT
+	m.PUBLICACION_CODIGO,
+	tv.id_vendedor,
+	tp.id_producto,
+	ta.codigo_almacen,
+    m.PUBLICACION_DESCRIPCION,
+    m.PUBLICACION_FECHA AS fecha_inicio,
+    m.PUBLICACION_FECHA_V AS fecha_fin,
+    m.PUBLICACION_STOCK,
+    m.PUBLICACION_PRECIO,
+    m.PUBLICACION_COSTO,
+    m.PUBLICACION_PORC_VENTA
+FROM gd_esquema.Maestra m
+JOIN SSGT.Almacen ta ON ta.codigo_almacen = m.ALMACEN_CODIGO
+JOIN SSGT.Producto tp ON tp.id_subrubro = (select TOP 1 sub.id_subrubro from SSGT.Subrubro sub where sub.d_subrubro = m.PRODUCTO_SUB_RUBRO and
+											sub.id_rubro = (SELECT TOP 1 r.id_rubro From SSGT.Rubro r where r.d_rubro = m.PRODUCTO_RUBRO_DESCRIPCION)) and
+						tp.id_marca = (select ma.id_marca from SSGT.marca ma where ma.d_marca = m.PRODUCTO_MARCA) and
+						tp.id_modelo = M.PRODUCTO_MOD_CODIGO and
+						tp.codigo_producto = m.PRODUCTO_CODIGO and
+						tp.d_descripcion = m.PRODUCTO_DESCRIPCION and
+						tp.precio = m.PRODUCTO_PRECIO
+JOIN SSGT.Vendedor tv ON tv.d_cuit = m.VENDEDOR_CUIT
+WHERE m.PUBLICACION_CODIGO is not null and
+NOT EXISTS(	SELECT p.id_publicacion FROM SSGT.Publicacion  p
+			where	p.id_publicacion = m.PUBLICACION_CODIGO)
+
+--Venta hay (103592)
+INSERT INTO SSGT.Venta (codigo_venta, id_cliente,  f_venta, importe_total)
+SELECT DISTINCT
+m.VENTA_CODIGO,
+c.id_cliente,
+m.VENTA_FECHA,
+m.VENTA_TOTAL
+from gd_esquema.Maestra m
+JOIN SSGT.Usuario u on	u.d_email = m.CLIENTE_MAIL and
+						u.d_password = m.CLI_USUARIO_PASS and
+						u.d_fecha_alta = m.CLI_USUARIO_FECHA_CREACION
+JOIN SSGT.Cliente c on	c.id_usuario = u.id_usuario and
+						c.dni = m.CLIENTE_DNI						
+WHERE m.VENTA_CODIGO IS NOT NULL and
+NOT EXISTS(	SELECT V.codigo_venta FROM SSGT.Venta V
+			WHERE V.codigo_venta = M.VENTA_CODIGO) 
+
+--DETALLE DE VENTA (103592)
+INSERT INTO SSGT.DetalleVenta(codigo_venta, id_publicacion, cantidad, precio, subtotal)
+SELECT DISTINCT
+codigo_venta,
+pu.id_publicacion,
+m.VENTA_DET_CANT,
+m.VENTA_DET_PRECIO,
+m.VENTA_DET_SUB_TOTAL
+from gd_esquema.Maestra m
+join SSGT.Publicacion pu on pu.id_publicacion = m.PUBLICACION_CODIGO
+JOIN SSGT.Venta v on v.codigo_venta = m.venta_codigo
+where	m.venta_det_precio is not null and
+		m.PUBLICACION_CODIGO is not null and
+NOT EXISTS(	SELECT dv.precio FROM SSGT.DetalleVenta dv
+			where	dv.id_publicacion = m.PUBLICACION_CODIGO and
+					dv.cantidad = m.VENTA_DET_CANT and
+					dv.precio = m.VENTA_DET_PRECIO and
+					dv.subtotal = m.VENTA_DET_SUB_TOTAL)
+
+--TipoMedioPago (2)
+INSERT INTO SSGT.TipoMedioPago (d_tipo_medio_pago)
+SELECT DISTINCT
+PAGO_TIPO_MEDIO_PAGO
+FROM gd_esquema.Maestra m
+WHERE PAGO_TIPO_MEDIO_PAGO IS NOT NULL
+
+--Medio de Pago (5).
+INSERT INTO SSGT.MedioPago (d_medio_pago, id_tipo_medio_pago)
+SELECT DISTINCT
+m.PAGO_MEDIO_PAGO,
+id_tipo_medio_pago
+FROM gd_esquema.Maestra m
+JOIN SSGT.TipoMedioPago tpm on tpm.d_tipo_medio_pago = m.PAGO_TIPO_MEDIO_PAGO
+WHERE PAGO_MEDIO_PAGO IS NOT NULL
+
+--DetallePago (103592).
+INSERT INTO SSGT.DetallePago (nro_tarjeta, f_vencimiento, cuotas)
+SELECT DISTINCT
+m.PAGO_NRO_TARJETA,
+M.PAGO_FECHA_VENC_TARJETA,
+m.PAGO_CANT_CUOTAS
+FROM gd_esquema.Maestra m
+WHERE PAGO_MEDIO_PAGO IS NOT NULL
+
+--PAGO (103592) 
+INSERT INTO SSGT.Pago(codigo_venta, id_medio_pago, id_detalle_pago, importe_total, f_pago)
+SELECT DISTINCT
+tv.codigo_venta,
+mp.id_medio_pago,
+dp.id_detalle_pago,
+m.PAGO_IMPORTE,
+PAGO_FECHA
+from gd_esquema.Maestra m
+JOIN SSGT.Venta tv on tv.codigo_venta = m.venta_codigo
+JOIN SSGT.MedioPago mp on	mp.d_medio_pago = m.PAGO_MEDIO_PAGO and
+							mp.id_tipo_medio_pago = (select tmp.id_tipo_medio_pago
+													from SSGT.TipoMedioPago tmp
+													where tmp.d_tipo_medio_pago = m.PAGO_TIPO_MEDIO_PAGO)
+JOIN SSGT.DetallePago dp on dp.nro_tarjeta = m.PAGO_NRO_TARJETA
+where m.VENTA_CODIGO is not null and
+		m.pago_importe is not null and
+		m.PAGO_NRO_TARJETA is not null
+
+
+--CONCEPTO DET FACTURA (3)
+INSERT INTO SSGT.Concepto_Det_Factura (d_concepto)
+SELECT DISTINCT
+	m.FACTURA_DET_TIPO
+FROM gd_esquema.Maestra m
+WHERE FACTURA_DET_TIPO IS NOT NULL
+AND NOT EXISTS(SELECT * from SSGT.Concepto_Det_Factura cdf
+				where cdf.d_concepto = m.FACTURA_DET_TIPO)
+
+--Factura (34629)
+INSERT INTO SSGT.Factura
+SELECT DISTINCT m.FACTURA_NUMERO,
+cdf.id_concepto_factura,
+p.id_vendedor,
+m.FACTURA_FECHA,
+m.FACTURA_TOTAL
+from gd_esquema.Maestra m
+JOIN SSGT.Publicacion p on p.id_publicacion = m.PUBLICACION_CODIGO
+JOIN SSGT.Vendedor v on v.id_vendedor = p.id_vendedor
+JOIN SSGT.Concepto_Det_Factura cdf on cdf.d_concepto = m.FACTURA_DET_TIPO
 WHERE m.FACTURA_NUMERO IS NOT NULL
 AND NOT EXISTS(SELECT f.factura_numero from SSGT.Factura f
 				where f.factura_numero = m.FACTURA_NUMERO)
