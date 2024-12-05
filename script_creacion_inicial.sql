@@ -1006,7 +1006,7 @@ AND NOT EXISTS(	SELECT te.d_tipo_envio FROM SSGT.TipoEnvio te
 INSERT INTO SSGT.Envio(codigo_venta, id_domicilio, id_tipo_envio, f_programada, hora_inicial, hora_final, f_entrega, costo)
 SELECT DISTINCT
 	tv.codigo_venta,
-	td.id_domicilio,
+	d.id_domicilio,
 	te.id_tipo_envio, 
 	m.ENVIO_FECHA_PROGAMADA,
 	m.ENVIO_HORA_INICIO,
@@ -1015,11 +1015,13 @@ SELECT DISTINCT
 	m.ENVIO_COSTO
 from gd_esquema.Maestra m
 JOIN SSGT.TipoEnvio te on te.d_tipo_envio = m.ENVIO_TIPO
-JOIN SSGT.Domicilio td on td.d_calle= m.CLI_USUARIO_DOMICILIO_CALLE and
-						td.d_altura= m.CLI_USUARIO_DOMICILIO_NRO_CALLE and
-						td.d_piso= m.CLI_USUARIO_DOMICILIO_PISO and
-						td.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO and
-						td.id_localidad = (SELECT TOP 1 l.id_localidad From SSGT.Localidad l where	l.d_localidad = m.CLI_USUARIO_DOMICILIO_LOCALIDAD and
-																									l.id_provincia = (SELECT TOP 1 p.id_provincia From SSGT.Provincia p where p.d_provincia = m.CLI_USUARIO_DOMICILIO_PROVINCIA))
+JOIN SSGT.Usuario u on u.d_email = m.CLIENTE_MAIL and
+						u.d_fecha_alta = m.CLI_USUARIO_FECHA_CREACION and
+						u.d_password = m.CLI_USUARIO_PASS
+JOIN SSGT.Domicilio d on d.id_usuario = u.id_usuario and
+						d.d_calle= m.CLI_USUARIO_DOMICILIO_CALLE and
+						d.d_altura= m.CLI_USUARIO_DOMICILIO_NRO_CALLE and
+						d.d_piso= m.CLI_USUARIO_DOMICILIO_PISO and
+						d.d_depto= m.CLI_USUARIO_DOMICILIO_DEPTO
 JOIN SSGT.Venta tv on tv.codigo_venta = m.VENTA_CODIGO
 WHERE m.ENVIO_FECHA_PROGAMADA is not null
