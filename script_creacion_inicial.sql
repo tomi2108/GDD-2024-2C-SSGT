@@ -81,6 +81,10 @@ BEGIN
     BEGIN
         ALTER TABLE SSGT.Pago DROP CONSTRAINT FK_Pago_MedioPago;
     END
+	IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.FK_Pago_DetallePago') AND type = 'F')
+    BEGIN
+        ALTER TABLE SSGT.Pago DROP CONSTRAINT FK_Pago_DetallePago;
+    END
 END
 
 IF OBJECT_ID('SSGT.MedioPago', 'U') IS NOT NULL 
@@ -336,6 +340,22 @@ BEGIN
     END
 END
 
+IF OBJECT_ID('SSGT.Pago', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_Pago') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.Pago DROP CONSTRAINT PK_Pago;
+    END
+END
+
+IF OBJECT_ID('SSGT.DetallePago', 'U') IS NOT NULL 
+BEGIN
+    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('SSGT.PK_DetallePago') AND type = 'PK')
+    BEGIN
+        ALTER TABLE SSGT.DetallePago DROP CONSTRAINT PK_DetallePago;
+    END
+END
+
 -- Verificación y eliminación de tablas si ya existen
 IF OBJECT_ID('SSGT.Domicilio', 'U') IS NOT NULL DROP TABLE SSGT.Domicilio;
 IF OBJECT_ID('SSGT.Provincia', 'U') IS NOT NULL DROP TABLE SSGT.Provincia;
@@ -362,7 +382,6 @@ IF OBJECT_ID('SSGT.DetallePago', 'U') IS NOT NULL DROP TABLE SSGT.DetallePago;
 IF OBJECT_ID('SSGT.Factura', 'U') IS NOT NULL DROP TABLE SSGT.Factura;
 IF OBJECT_ID('SSGT.DetalleFactura', 'U') IS NOT NULL DROP TABLE SSGT.DetalleFactura;
 IF OBJECT_ID('SSGT.Concepto_Det_Factura', 'U') IS NOT NULL DROP TABLE SSGT.Concepto_Det_Factura;
-
 -- Elimina la secuencia si ya existe
 IF OBJECT_ID('SSGT.DomicilioSeq', 'SO') IS NOT NULL
     DROP SEQUENCE SSGT.DomicilioSeq;
@@ -489,6 +508,7 @@ CREATE TABLE SSGT.Publicacion (
 
 CREATE TABLE SSGT.DetalleVenta (
     id_detalle_venta decimal(18,0) IDENTITY (1,1) PRIMARY KEY,
+	codigo_venta decimal(18,0),
 	id_publicacion DECIMAL (18,0) NOT NULL,
     cantidad decimal(18,0),
 	precio decimal(18,2),
@@ -497,7 +517,6 @@ CREATE TABLE SSGT.DetalleVenta (
 
 CREATE TABLE SSGT.Venta (
 	codigo_venta decimal (18,0) PRIMARY KEY,
-	id_detalle_venta decimal(18,0) NOT NULL,
     id_cliente decimal(18,0) NOT NULL,
 	f_venta DATE,
     importe_total decimal(18,2)
@@ -528,8 +547,6 @@ CREATE TABLE SSGT.TipoMedioPago (
 CREATE TABLE SSGT.MedioPago (
     id_medio_pago decimal (18,0) IDENTITY (1,1) PRIMARY KEY,
     d_medio_pago VARCHAR(50),
-	nro_tarjeta NVARCHAR(50),
-	f_vencimiento DATE,
 	id_tipo_medio_pago decimal(18,0)
 );
 
@@ -538,8 +555,14 @@ CREATE TABLE SSGT.Pago (
     id_pago decimal(18,0) IDENTITY (1,1) PRIMARY KEY,
     codigo_venta decimal(18,0) NOT NULL,
     id_medio_pago decimal (18,0) NOT NULL,
-    importe_total FLOAT,
-	f_pago DATE,
+	id_detalle_pago decimal (18,0) NOT NULL,
+	importe_total FLOAT,
+	f_pago DATE
+);
+CREATE TABLE SSGT.DetallePago(
+	id_detalle_pago decimal(18,0) IDENTITY (1,1) PRIMARY KEY,
+	nro_tarjeta NVARCHAR(50),
+	f_vencimiento DATE,
     cuotas INT
 );
 
@@ -574,7 +597,9 @@ ALTER TABLE SSGT.Domicilio			ADD CONSTRAINT FK_Domicilio_Usuario	FOREIGN KEY (id
 ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
 ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Concepto_Det_Factura FOREIGN KEY (id_concepto_factura) REFERENCES SSGT.Concepto_Det_Factura(id_concepto_factura);
 ALTER TABLE SSGT.DetalleFactura		ADD CONSTRAINT FK_DetalleFactura_Factura FOREIGN KEY (factura_numero) REFERENCES SSGT.Factura(factura_numero);
+--ALTER TABLE SSGT.DetallePago		ADD CONSTRAINT FK_DetallePago_Pago		FOREIGN KEY (id_pago) REFERENCES SSGT.Pago(id_pago);
 ALTER TABLE SSGT.DetalleVenta		ADD CONSTRAINT FK_DetalleVenta_Publicacion FOREIGN KEY (id_publicacion) REFERENCES SSGT.Publicacion(id_publicacion);
+ALTER TABLE SSGT.DetalleVenta		ADD CONSTRAINT FK_DetalleVenta_Venta	FOREIGN KEY (codigo_venta) REFERENCES SSGT.Venta(codigo_venta);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Domicilio		FOREIGN KEY (id_domicilio) REFERENCES SSGT.Domicilio(id_domicilio);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_TipoEnvio		FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.TipoEnvio(id_tipo_envio);
 ALTER TABLE SSGT.Envio				ADD CONSTRAINT FK_Envio_Venta			FOREIGN KEY (codigo_venta) REFERENCES SSGT.Venta(codigo_venta);
@@ -583,6 +608,7 @@ ALTER TABLE SSGT.Localidad			ADD CONSTRAINT FK_Localidad_Provincia	FOREIGN KEY (
 ALTER TABLE SSGT.MedioPago			ADD CONSTRAINT FK_MedioPago_TipoMedioPago FOREIGN KEY (id_tipo_medio_pago) REFERENCES SSGT.TipoMedioPago(id_tipo_medio_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_MedioPago		FOREIGN KEY (id_medio_pago) REFERENCES SSGT.MedioPago(id_medio_pago);
 ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_Venta			FOREIGN KEY (codigo_venta) REFERENCES SSGT.Venta(codigo_venta);
+ALTER TABLE SSGT.Pago				ADD CONSTRAINT FK_Pago_DetallePago		FOREIGN KEY (id_detalle_pago) REFERENCES SSGT.DetallePago(id_detalle_pago);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Marca		FOREIGN KEY (id_marca) REFERENCES SSGT.Marca(id_marca);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Modelo		FOREIGN KEY (id_modelo) REFERENCES SSGT.Modelo(id_modelo);
 ALTER TABLE SSGT.Producto			ADD CONSTRAINT FK_Producto_Subrubro		FOREIGN KEY (id_subrubro) REFERENCES SSGT.Subrubro(id_subrubro);
@@ -591,7 +617,7 @@ ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Producto	FOREIGN KEY
 ALTER TABLE SSGT.Publicacion		ADD CONSTRAINT FK_Publicacion_Almacen	FOREIGN KEY (codigo_almacen) REFERENCES SSGT.Almacen(codigo_almacen);
 ALTER TABLE SSGT.Subrubro			ADD CONSTRAINT FK_Subrubro_Rubro		FOREIGN KEY (id_rubro) REFERENCES SSGT.Rubro(id_rubro);
 ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_Cliente			FOREIGN KEY (id_cliente) REFERENCES SSGT.Cliente(id_cliente);
-ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
+--ALTER TABLE SSGT.Venta				ADD CONSTRAINT FK_Venta_DetalleVenta	FOREIGN KEY (id_detalle_venta) REFERENCES SSGT.DetalleVenta(id_detalle_venta);
 ALTER TABLE SSGT.Vendedor			ADD CONSTRAINT FK_Vendedor_Usuario		FOREIGN KEY (id_usuario) REFERENCES SSGT.Usuario(id_usuario);
 
 -- Migracion de datos
@@ -887,28 +913,10 @@ JOIN SSGT.Publicacion tp on tp.id_publicacion = m.PUBLICACION_CODIGO
 JOIN SSGT.Concepto_Det_Factura tcdf ON tcdf.d_concepto = m.FACTURA_DET_TIPO
 WHERE m.FACTURA_DET_PRECIO IS NOT NULL;
 
---DETALLE DE VENTA (80080) Sin Distinct 103592
-INSERT INTO SSGT.DetalleVenta(id_publicacion, cantidad, precio, subtotal)
-SELECT DISTINCT
-pu.id_publicacion,
-m.VENTA_DET_CANT,
-m.VENTA_DET_PRECIO,
-m.VENTA_DET_SUB_TOTAL
-from gd_esquema.Maestra m
-join SSGT.Publicacion pu on pu.id_publicacion = m.PUBLICACION_CODIGO
-where	m.venta_det_precio is not null and
-		m.PUBLICACION_CODIGO is not null and
-NOT EXISTS(	SELECT dv.precio FROM SSGT.DetalleVenta dv
-			where	dv.id_publicacion = m.PUBLICACION_CODIGO and
-					dv.cantidad = m.VENTA_DET_CANT and
-					dv.precio = m.VENTA_DET_PRECIO and
-					dv.subtotal = m.VENTA_DET_SUB_TOTAL)
-
 --Venta hay (103592)
-INSERT INTO SSGT.Venta (codigo_venta, id_detalle_venta, id_cliente,  f_venta, importe_total)
+INSERT INTO SSGT.Venta (codigo_venta, id_cliente,  f_venta, importe_total)
 SELECT DISTINCT
 m.VENTA_CODIGO,
-dv.id_detalle_venta,
 c.id_cliente,
 m.VENTA_FECHA,
 m.VENTA_TOTAL
@@ -918,13 +926,28 @@ JOIN SSGT.Usuario u on	u.d_email = m.CLIENTE_MAIL and
 						u.d_fecha_alta = m.CLI_USUARIO_FECHA_CREACION
 JOIN SSGT.Cliente c on	c.id_usuario = u.id_usuario and
 						c.dni = m.CLIENTE_DNI						
-JOIN SSGT.DetalleVenta dv on	dv.id_publicacion = m.PUBLICACION_CODIGO and
-								dv.cantidad = m.VENTA_DET_CANT and
-								dv.precio = m.VENTA_DET_PRECIO and
-								dv.subtotal = m.VENTA_DET_SUB_TOTAL
 WHERE m.VENTA_CODIGO IS NOT NULL and
 NOT EXISTS(	SELECT V.codigo_venta FROM SSGT.Venta V
 			WHERE V.codigo_venta = M.VENTA_CODIGO) 
+
+--DETALLE DE VENTA (103592)
+INSERT INTO SSGT.DetalleVenta(codigo_venta, id_publicacion, cantidad, precio, subtotal)
+SELECT DISTINCT
+codigo_venta,
+pu.id_publicacion,
+m.VENTA_DET_CANT,
+m.VENTA_DET_PRECIO,
+m.VENTA_DET_SUB_TOTAL
+from gd_esquema.Maestra m
+join SSGT.Publicacion pu on pu.id_publicacion = m.PUBLICACION_CODIGO
+JOIN SSGT.Venta v on v.codigo_venta = m.venta_codigo
+where	m.venta_det_precio is not null and
+		m.PUBLICACION_CODIGO is not null and
+NOT EXISTS(	SELECT dv.precio FROM SSGT.DetalleVenta dv
+			where	dv.id_publicacion = m.PUBLICACION_CODIGO and
+					dv.cantidad = m.VENTA_DET_CANT and
+					dv.precio = m.VENTA_DET_PRECIO and
+					dv.subtotal = m.VENTA_DET_SUB_TOTAL)
 
 --TipoMedioPago (2)
 INSERT INTO SSGT.TipoMedioPago (d_tipo_medio_pago)
@@ -933,31 +956,42 @@ PAGO_TIPO_MEDIO_PAGO
 FROM gd_esquema.Maestra m
 WHERE PAGO_TIPO_MEDIO_PAGO IS NOT NULL
 
---Medio de Pago (103592).
-INSERT INTO SSGT.MedioPago (d_medio_pago, nro_tarjeta, f_vencimiento, id_tipo_medio_pago)
+--Medio de Pago (5).
+INSERT INTO SSGT.MedioPago (d_medio_pago, id_tipo_medio_pago)
 SELECT DISTINCT
 m.PAGO_MEDIO_PAGO,
-m.PAGO_NRO_TARJETA,
-M.PAGO_FECHA_VENC_TARJETA,
 id_tipo_medio_pago
 FROM gd_esquema.Maestra m
 JOIN SSGT.TipoMedioPago tpm on tpm.d_tipo_medio_pago = m.PAGO_TIPO_MEDIO_PAGO
 WHERE PAGO_MEDIO_PAGO IS NOT NULL
 
---PAGO (103592)
-INSERT INTO SSGT.Pago(codigo_venta, id_medio_pago, importe_total, f_pago, cuotas)
+--DetallePago (103592).
+INSERT INTO SSGT.DetallePago (nro_tarjeta, f_vencimiento, cuotas)
+SELECT DISTINCT
+m.PAGO_NRO_TARJETA,
+M.PAGO_FECHA_VENC_TARJETA,
+m.PAGO_CANT_CUOTAS
+FROM gd_esquema.Maestra m
+WHERE PAGO_MEDIO_PAGO IS NOT NULL
+
+--PAGO (82798) 
+INSERT INTO SSGT.Pago(codigo_venta, id_medio_pago, id_detalle_pago, importe_total, f_pago)
 SELECT DISTINCT
 tv.codigo_venta,
 mp.id_medio_pago,
+dp.id_detalle_pago,
 m.PAGO_IMPORTE,
-PAGO_FECHA,
-PAGO_CANT_CUOTAS
+PAGO_FECHA
 from gd_esquema.Maestra m
-JOIN SSGT.MedioPago mp on	mp.nro_tarjeta = m.PAGO_NRO_TARJETA
 JOIN SSGT.Venta tv on tv.codigo_venta = m.venta_codigo
+JOIN SSGT.MedioPago mp on	mp.d_medio_pago = m.PAGO_MEDIO_PAGO and
+							mp.id_tipo_medio_pago = (select tmp.id_tipo_medio_pago
+													from SSGT.TipoMedioPago tmp
+													where tmp.d_tipo_medio_pago = m.PAGO_TIPO_MEDIO_PAGO)
+JOIN SSGT.DetallePago dp on dp.nro_tarjeta = m.PAGO_NRO_TARJETA
 where m.VENTA_CODIGO is not null and
-		m.pago_importe is not null
-
+		m.pago_importe is not null and
+		m.PAGO_NRO_TARJETA is not null
 
 --Tipo de Envio (3)
 INSERT INTO SSGT.TipoEnvio (d_tipo_envio)
@@ -966,7 +1000,7 @@ FROM gd_esquema.Maestra m
 WHERE m.ENVIO_TIPO IS NOT NULL
 AND NOT EXISTS(	SELECT te.d_tipo_envio FROM SSGT.TipoEnvio te
 				where te.d_tipo_envio = m.ENVIO_TIPO)
---ENVIO	5364
+--ENVIO	102093
 INSERT INTO SSGT.Envio(codigo_venta, id_domicilio, id_tipo_envio, f_programada, hora_inicial, hora_final, f_entrega, costo)
 SELECT DISTINCT
 	tv.codigo_venta,
