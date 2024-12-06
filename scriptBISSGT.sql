@@ -1,9 +1,6 @@
 USE GD2C2024
 GO
 
-----------------------------------------------------------
----- Elimino Tablas y constraints ----
-----------------------------------------------------------
 
 -- TABLAS 
 
@@ -143,149 +140,173 @@ GO
 ---- Creo tablas  -----
 
 CREATE TABLE SSGT.D_rango_etario (
-	id_rango_etario INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
-	d_rango_etario NVARCHAR(6) NOT NULL,
-)
-GO
- 
-
-CREATE TABLE SSGT.D_Marca(
-	id_marca INT PRIMARY KEY NOT NULL,
-	d_marca NVARCHAR(255)NOT NULL,
-
-)
+    id_rango_etario INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+    d_rango_etario NVARCHAR(6) NOT NULL
+);
 GO
 
-
+CREATE TABLE SSGT.D_Marca (
+    id_marca INT PRIMARY KEY NOT NULL,
+    d_marca NVARCHAR(255) NOT NULL
+);
+GO
 
 CREATE TABLE SSGT.D_Sub_rubro (
-	id_subrubro INT PRIMARY KEY NOT NULL,
-	d_subrubro NVARCHAR(50) NOT NULL,
-	d_rubro NVARCHAR(50) NOT NULL,
-)
+    id_subrubro INT PRIMARY KEY NOT NULL,
+    d_subrubro NVARCHAR(50) NOT NULL,
+    d_rubro NVARCHAR(50) NOT NULL
+);
 GO
 
 CREATE TABLE SSGT.D_Tiempo (
-	id_tiempo INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
-	anio	DECIMAL(5,0) NOT NULL,
-	mes	DECIMAL(3,0) NOT NULL,
-	cuatrimestre  DECIMAL(2,0) NOT NULL,
-)
+    id_tiempo INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+    anio DECIMAL(5,0) NOT NULL,
+    mes DECIMAL(3,0) NOT NULL,
+    cuatrimestre DECIMAL(2,0) NOT NULL
+);
 GO
-
 
 CREATE TABLE SSGT.D_Medio_De_Pago (
-	id_medio_pago INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
-	d_medio_pago NVARCHAR(50) NOT NULL,
-	cant_cuotas DECIMAL(18,0) NOT NULL,
-    d_tipo_medio_pago NVARCHAR(50) 
-)
+    id_medio_pago INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+    d_medio_pago NVARCHAR(50) NOT NULL,
+    cant_cuotas DECIMAL(18,0) NOT NULL,
+    d_tipo_medio_pago NVARCHAR(50)
+);
 GO
 
-
 CREATE TABLE SSGT.D_Ubicacion (
-	id_ubicacion INT PRIMARY KEY NOT NULL,
-	id_provincia NVARCHAR(50) NOT NULL,
-	id_localidad NVARCHAR(50) NOT NULL,
-)
+    id_ubicacion INT PRIMARY KEY NOT NULL,
+    id_provincia NVARCHAR(50) NOT NULL,
+    id_localidad NVARCHAR(50) NOT NULL
+);
 GO
 
 CREATE TABLE SSGT.D_Localidad (
-	id_localidad INT PRIMARY KEY NOT NULL,
-	d_localidad NVARCHAR(50) NOT NULL,
-)
+    id_localidad INT PRIMARY KEY NOT NULL,
+    d_localidad NVARCHAR(50) NOT NULL
+);
 GO
 
 CREATE TABLE SSGT.D_Provincia (
-	id_provincia INT PRIMARY KEY NOT NULL,
-	d_provincia NVARCHAR(50) NOT NULL,
-)
+    id_provincia INT PRIMARY KEY NOT NULL,
+    d_provincia NVARCHAR(50) NOT NULL
+);
 GO
-
 
 CREATE TABLE SSGT.D_Tipo_Envio (
-	id_tipo_envio INT PRIMARY KEY NOT NULL,
-	d_tipo_envio NVARCHAR(50) NOT NULL,
-)
+    id_tipo_envio INT PRIMARY KEY NOT NULL,
+    d_tipo_envio NVARCHAR(50) NOT NULL
+);
 GO
-
 
 CREATE TABLE SSGT.H_Publicacion (
-	id_marca INT NOT NULL,
-	id_subrubro INT NOT NULL,
-	id_tiempo INT NOT NULL, 
-	promedio_stock_inicial DECIMAL(18,2),
-	promedio_cant_publicaciones DECIMAL(18,0),
-	promedio_tiempo_vigente DECIMAL(18,2),
-	CONSTRAINT fk_id_marca
-	FOREIGN KEY (id_marca) REFERENCES SSGT.D_marca (id_marca),
-	CONSTRAINT fk_id_subrubro
-	FOREIGN KEY (id_subrubro) REFERENCES SSGT.D_Sub_rubro (id_subrubro),
-	CONSTRAINT fk_id_tiempo
-	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
-)
+    id_marca INT NOT NULL,
+    id_subrubro INT NOT NULL,
+    id_tiempo INT NOT NULL,
+    promedio_stock_inicial DECIMAL(18,2),
+    promedio_cant_publicaciones DECIMAL(18,0),
+    promedio_tiempo_vigente DECIMAL(18,2)
+);
 GO
 
-
-CREATE TABLE SSGT.H_Venta(
-	id_subrubro INT NOT NULL,
-	id_tiempo INT NOT NULL,
-	id_ubi_almacen INT NOT NULL,
-	id_ubi_cliente INT NOT NULL,
-	id_rango_etario INT NOT NULL,
-	id_medio_pago INT NOT NULL,
-	ingreso_total DECIMAL(18,2) NOT NULL,
-	cantidad_vendida DECIMAL(18,0) NOT NULL
-	CONSTRAINT fk_vent_id_subrubro
-	FOREIGN KEY (id_subrubro) REFERENCES SSGT.D_Sub_rubro (id_subrubro),
-	CONSTRAINT fk_vent_id_tiempo
-	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
-	CONSTRAINT id_ubi_almacen 
-	FOREIGN KEY (id_ubi_almacen) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT id_ubi_cliente 
-	FOREIGN KEY (id_ubi_cliente) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT fk_id_rango_etario
-	FOREIGN KEY (id_rango_etario) REFERENCES SSGT.D_rango_etario (id_rango_etario),
-	CONSTRAINT fk_id_medio_pago 
-	FOREIGN KEY (id_medio_pago ) REFERENCES SSGT.D_Medio_De_Pago (id_medio_pago),
-)
+CREATE TABLE SSGT.H_Venta (
+    id_subrubro INT NOT NULL,
+    id_tiempo INT NOT NULL,
+    id_ubi_almacen INT NOT NULL,
+    id_ubi_cliente INT NOT NULL,
+    id_rango_etario INT NOT NULL,
+    id_medio_pago INT NOT NULL,
+    ingreso_total DECIMAL(18,2) NOT NULL,
+    cantidad_vendida DECIMAL(18,0) NOT NULL
+);
 GO
-
-
 
 CREATE TABLE SSGT.H_Envio (
-	id_ubi_cliente INT NOT NULL,
-	id_ubi_almacen INT NOT NULL,
-	id_tiempo INT NOT NULL,
-	id_tipo_envio INT NOT NULL,
-	cant_cumplidos DECIMAL(18,0),
-	total_envios DECIMAL(18,0) NOT NULL,
-	costo_envio DECIMAL(18,2) NOT NULL,
-	CONSTRAINT env_id_ubi_cliente 
-	FOREIGN KEY (id_ubi_cliente) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT env_id_ubi_almacen 
-	FOREIGN KEY (id_ubi_almacen) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT fk_env_id_tiempo
-	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
-	CONSTRAINT fk_id_tipo_envio
-	FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.D_Tipo_Envio (id_tipo_envio),
-)
+    id_ubi_cliente INT NOT NULL,
+    id_ubi_almacen INT NOT NULL,
+    id_tiempo INT NOT NULL,
+    id_tipo_envio INT NOT NULL,
+    cant_cumplidos DECIMAL(18,0),
+    total_envios DECIMAL(18,0) NOT NULL,
+    costo_envio DECIMAL(18,2) NOT NULL
+);
 GO
-
 
 CREATE TABLE SSGT.H_Facturacion (
-	id_ubi_vendedor INT NOT NULL,
-	id_tiempo INT NOT NULL,
-	cantidad_facturada DECIMAL(18,2),
-	cant_concepto_fact DECIMAL(18,2),
-	CONSTRAINT fk_fact_env_id_ubicacion
-	FOREIGN KEY (id_ubi_vendedor) REFERENCES SSGT.D_ubicacion (id_ubicacion),
-	CONSTRAINT fk_fact_id_tiempo
-	FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_tiempo (id_tiempo),
-)
+    id_ubi_vendedor INT NOT NULL,
+    id_tiempo INT NOT NULL,
+    cantidad_facturada DECIMAL(18,2),
+    cant_concepto_fact DECIMAL(18,2)
+);
 GO
 
 
+
+-- Constraints para SSGT.H_Publicacion
+ALTER TABLE SSGT.H_Publicacion
+ADD CONSTRAINT fk_id_marca
+    FOREIGN KEY (id_marca) REFERENCES SSGT.D_Marca (id_marca);
+
+ALTER TABLE SSGT.H_Publicacion
+ADD CONSTRAINT fk_id_subrubro
+    FOREIGN KEY (id_subrubro) REFERENCES SSGT.D_Sub_rubro (id_subrubro);
+
+ALTER TABLE SSGT.H_Publicacion
+ADD CONSTRAINT fk_id_tiempo
+    FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_Tiempo (id_tiempo);
+
+-- Constraints para SSGT.H_Venta
+ALTER TABLE SSGT.H_Venta
+ADD CONSTRAINT fk_vent_id_subrubro
+    FOREIGN KEY (id_subrubro) REFERENCES SSGT.D_Sub_rubro (id_subrubro);
+
+ALTER TABLE SSGT.H_Venta
+ADD CONSTRAINT fk_vent_id_tiempo
+    FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_Tiempo (id_tiempo);
+
+ALTER TABLE SSGT.H_Venta
+ADD CONSTRAINT fk_id_ubi_almacen
+    FOREIGN KEY (id_ubi_almacen) REFERENCES SSGT.D_Ubicacion (id_ubicacion);
+
+ALTER TABLE SSGT.H_Venta
+ADD CONSTRAINT fk_id_ubi_cliente
+    FOREIGN KEY (id_ubi_cliente) REFERENCES SSGT.D_Ubicacion (id_ubicacion);
+
+ALTER TABLE SSGT.H_Venta
+ADD CONSTRAINT fk_id_rango_etario
+    FOREIGN KEY (id_rango_etario) REFERENCES SSGT.D_Rango_Etario (id_rango_etario);
+
+ALTER TABLE SSGT.H_Venta
+ADD CONSTRAINT fk_id_medio_pago
+    FOREIGN KEY (id_medio_pago) REFERENCES SSGT.D_Medio_De_Pago (id_medio_pago);
+
+-- Constraints para SSGT.H_Envio
+ALTER TABLE SSGT.H_Envio
+ADD CONSTRAINT fk_env_id_ubi_cliente
+    FOREIGN KEY (id_ubi_cliente) REFERENCES SSGT.D_Ubicacion (id_ubicacion);
+
+ALTER TABLE SSGT.H_Envio
+ADD CONSTRAINT fk_env_id_ubi_almacen
+    FOREIGN KEY (id_ubi_almacen) REFERENCES SSGT.D_Ubicacion (id_ubicacion);
+
+ALTER TABLE SSGT.H_Envio
+ADD CONSTRAINT fk_env_id_tiempo
+    FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_Tiempo (id_tiempo);
+
+ALTER TABLE SSGT.H_Envio
+ADD CONSTRAINT fk_env_id_tipo_envio
+    FOREIGN KEY (id_tipo_envio) REFERENCES SSGT.D_Tipo_Envio (id_tipo_envio);
+
+-- Constraints para SSGT.H_Facturacion
+ALTER TABLE SSGT.H_Facturacion
+ADD CONSTRAINT fk_fact_env_id_ubicacion
+    FOREIGN KEY (id_ubi_vendedor) REFERENCES SSGT.D_Ubicacion (id_ubicacion);
+
+ALTER TABLE SSGT.H_Facturacion
+ADD CONSTRAINT fk_fact_id_tiempo
+    FOREIGN KEY (id_tiempo) REFERENCES SSGT.D_Tiempo (id_tiempo);
+
+	go
 
 ------------- Creo Funciones  --------------
 
@@ -293,28 +314,22 @@ CREATE FUNCTION SSGT.get_Rango_Etario_Cliente (@fechaNacimiento DATE)
 RETURNS NVARCHAR(50)
 AS
 BEGIN
-    DECLARE @age INT;
-    DECLARE @rango_etario NVARCHAR(10);
+    DECLARE @edad INT;
+    DECLARE @rango NVARCHAR(50);
 
+    -- Calcular la edad exacta considerando el mes y día
+    SET @edad = DATEDIFF(YEAR, @fechaNacimiento, GETDATE()) 
+                - CASE WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(@fechaNacimiento, 'MMdd') THEN 1 ELSE 0 END;
 
-    SET @age = DATEDIFF(YEAR, @fechaNacimiento, GETDATE());
-    IF (MONTH(@fechaNacimiento) > MONTH(GETDATE())) OR 
-       (MONTH(@fechaNacimiento) = MONTH(GETDATE()) AND DAY(@fechaNacimiento) > DAY(GETDATE()))
-    BEGIN
-        SET @age = @age - 1;
-    END
+    -- Determinar el rango etario basado en la edad
+    SET @rango = CASE 
+                    WHEN @edad < 25 THEN '< 25'
+                    WHEN @edad BETWEEN 25 AND 35 THEN '25-35'
+                    WHEN @edad BETWEEN 36 AND 50 THEN '36-50'
+                    ELSE '> 50'
+                 END;
 
-
-    IF @age < 25
-        SET @rango_etario = '< 25';
-    ELSE IF @age BETWEEN 25 AND 35
-        SET @rango_etario = '25-35';
-    ELSE IF @age BETWEEN 36 AND 50
-        SET @rango_etario = '36-50';
-    ELSE
-        SET @rango_etario = '> 50';
-
-    RETURN @rango_etario;
+    RETURN @rango;
 END;
 GO
 
@@ -332,15 +347,6 @@ from SSGT.marca
 GO
 
 
------------------ meto indice ----------------------------- 
-
-
-CREATE NONCLUSTERED INDEX idx_H_Venta_Ids
-ON SSGT.H_Venta (id_tiempo, id_ubi_almacen,id_ubi_cliente, id_rango_etario, id_subrubro);
-GO
-
-
-
 CREATE PROCEDURE SSGT.migracion_d_medios_de_pago
 AS
 INSERT INTO SSGT.D_Medio_De_Pago (
@@ -348,7 +354,6 @@ INSERT INTO SSGT.D_Medio_De_Pago (
 	cant_cuotas,
     d_tipo_medio_pago
 )
---dejo el distinct??
 SELECT distinct mp.d_medio_pago,  det.cuotas, tmp.d_tipo_medio_pago
 	FROM SSGT.MedioPago mp
 	join SSGT.Pago p on p.id_medio_pago = mp.id_medio_pago 
@@ -458,12 +463,12 @@ join SSGT.D_Tiempo ti on ti.anio = year(v.f_venta) and MONTH(v.f_venta) = ti.mes
 join SSGT.Almacen al on al.codigo_almacen = pu.codigo_almacen
 join SSGT.Domicilio do on do.id_domicilio = al.id_domicilio 
 join SSGT.D_Ubicacion ubi_almacen on ubi_almacen.id_ubicacion = do.id_domicilio --esto nose si esta bien
-join SSGT.Usuario us on us.id_usuario = v.id_cliente
-join SSGT.Cliente c on c.id_usuario = us.id_usuario
+join SSGT.Cliente c on c.id_cliente = v.id_cliente
+join SSGT.Usuario us on us.id_usuario = c.id_usuario --ojo aca
 join SSGT.D_rango_etario re on re.d_rango_etario = SSGT.get_Rango_Etario_Cliente(c.f_nacimiento)
 join SSGT.Pago p on p.codigo_venta = v.codigo_venta
 join SSGT.DetallePago dp on dp.id_detalle_pago = p.id_detalle_pago
-join SSGT.MedioPago mdp on mdp.id_medio_pago = dp.id_detalle_pago
+join SSGT.MedioPago mdp on mdp.id_medio_pago = p.id_medio_pago
 join SSGT.D_Medio_De_Pago bmdp on bmdp.cant_cuotas = dp.cuotas and bmdp.d_medio_pago = mdp.d_medio_pago
 join SSGT.Envio e on e.codigo_venta = v.codigo_venta --and e.id_domicilio = c.id_domicilio
 join SSGT.Domicilio domU on domU.id_usuario = us.id_usuario and e.id_domicilio = domU.id_domicilio
@@ -506,7 +511,6 @@ AS
 	join SSGT.DetalleFactura det on det.factura_numero = f.factura_numero and 
 	det.id_concepto_factura = f.id_concepto_factura
 	join SSGT.D_Tiempo on YEAR(f.fecha) = anio and MONTH(f.fecha) = mes
-    --join SSGT.UsuDom on usu_id = usu_dom_usu_id 
     join SSGT.Vendedor v on v.id_vendedor = f.id_vendedor --uso VENDEDOR COMO USUDOM
 	join SSGT.Usuario us  on v.id_usuario = us.id_usuario
 	join SSGT.Domicilio d on us.id_usuario = d.id_usuario 
@@ -526,9 +530,8 @@ AS
             ELSE 0 
         END)
 	from SSGT.Envio e
-	join SSGT.D_Tipo_Envio d_tipo on d_tipo.id_tipo_envio = e.id_envio
+	join SSGT.D_Tipo_Envio d_tipo on d_tipo.id_tipo_envio = e.id_tipo_envio --aca estaba joineando mal
 	join SSGT.D_Tiempo on anio = YEAR(e.f_programada) and MONTH(e.f_programada) = mes
-	--join SSGT.UsuDom on env_usu_dom_envio = usu_dom_id
 	join SSGT.Domicilio dom on e.id_domicilio = dom.id_domicilio
 	join SSGT.D_Ubicacion ubi on ubi.id_ubicacion = dom.id_domicilio
 	join SSGT.Venta v on e.codigo_venta = v.codigo_venta
@@ -549,7 +552,6 @@ EXEC SSGT.migracion_d_tipo_envio
 EXEC SSGT.migracion_d_Sub_rubro
 EXEC SSGT.migracion_d_medios_de_pago
 EXEC SSGT.migracion_d_rango_etario
---EXEC SSGT.migracion_d_rango_horario
 EXEC SSGT.migracion_d_tiempo
 EXEC SSGT.migracion_h_ventas
 EXEC SSGT.migracion_h_facturacion
